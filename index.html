@@ -542,7 +542,12 @@ function revealOpportunity(reasonOk){
   $('reasons').classList.add('hidden'); $('prompt').textContent='';
   const inst=cur;
   const goodBuy=(inst.kind==='real' && !inst.overpriced);
-  const correct=correctCalls(inst).includes(call);
+
+  // Shorting a hype mania is dangerous: even a correct "it's a bubble" read can get squeezed.
+  let squeezed=false;
+  if(inst.kind==='hollow' && !inst.fraud && call==='short') squeezed = Math.random()<0.45;
+  let correct=correctCalls(inst).includes(call);
+  if(squeezed) correct=false;
 
   let d=0;
   if(inst.kind==='real'){
@@ -550,8 +555,9 @@ function revealOpportunity(reasonOk){
     else if(call==='short') d = inst.overpriced ? 150 : -200;
   } else if(inst.kind==='declining'){
     if(call==='invest') d=-300; else if(call==='short') d=200;
-  } else {
-    if(call==='invest') d=-350; else if(call==='short') d=250;
+  } else { // hollow
+    if(call==='invest') d=-350;
+    else if(call==='short') d = inst.fraud ? 200 : (squeezed ? -250 : 200);
   }
   cash+=d;
 
@@ -575,8 +581,12 @@ function revealOpportunity(reasonOk){
     vv='It looked cheap at '+inst.pe+'\u00D7 — but its earnings are shrinking. The classic value trap.';
   } else if(inst.fraud){
     vv='At '+inst.pe+'\u00D7 it looked fairly priced — but the earnings were fabricated.';
+    if(call==='short') vv+=' Shorting a fraud with a real catalyst is a classic winning short.';
   } else {
     vv='With no real earnings, there was nothing to value it on. The price was pure story.';
+    if(call==='short') vv += squeezed
+      ? ' You were right it\u2019s a bubble \u2014 but the mania ran higher and squeezed your short. Being right isn\u2019t enough if you can\u2019t outlast the crowd. Passing is the disciplined call.'
+      : ' Your short paid when the bubble popped \u2014 but timing a mania is a gamble. Passing is the safer edge.';
   }
   const fb = bonus ? '<span class="fb ok">\u2713 Right reason.</span>' : '<span class="fb">The read that mattered: \u201C'+curReason+'\u201D</span>';
   $('revealReason').innerHTML='<b>'+vv+'</b>'+fb;
