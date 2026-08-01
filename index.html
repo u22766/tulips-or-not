@@ -662,25 +662,32 @@ function correctCalls(inst){
   return ['pass','short'];
 }
 
-/* Return on committed capital for a resolved trade. Pass commits nothing. */
-function tradeReturn(inst, call, squeezed){
-  if(call==='pass') return 0;
+/* A held position: a day-one move, then compounding per turn held. */
+function positionParams(inst, call, squeezed){
   if(inst.kind==='real'){
-    if(call==='invest') return inst.overpriced ? -0.28 : (inst.scen==='bargain'? 0.45 : 0.18);
-    if(call==='short')  return inst.overpriced ? 0.18 : -0.28;
+    if(call==='invest'){
+      if(inst.overpriced) return {im:-0.10, g:-0.02};
+      if(inst.scen==='bargain') return {im:0.08, g:0.06};
+      return {im:0.03, g:0.03};
+    }
+    if(call==='short') return inst.overpriced ? {im:0.05,g:0.01} : {im:-0.10,g:-0.03};
   } else if(inst.kind==='declining'){
-    if(call==='invest') return -0.40;
-    if(call==='short')  return 0.30;
+    if(call==='invest') return {im:-0.15,g:-0.05};
+    if(call==='short')  return {im:0.10,g:0.04};
   } else { // hollow
-    if(call==='invest') return inst.fraud ? -0.55 : -0.60;
-    if(call==='short')  return inst.fraud ? 0.35 : (squeezed ? -0.55 : 0.45);
+    if(call==='invest') return inst.fraud ? {im:-0.20,g:-0.10} : {im:-0.25,g:-0.08};
+    if(call==='short')  return inst.fraud ? {im:0.10,g:0.06} : (squeezed ? {im:-0.20,g:-0.03} : {im:0.15,g:0.05});
   }
-  return 0;
+  return {im:0,g:0};
 }
 
 /* ---- Portfolio: holdings persist, cost cash, and get shocked by events ---- */
 const EVENT_SHOCK={"Market Storm":-0.22,"Rates Jump":-0.12,"False Alarm":-0.10,"Recession":-0.12};
-function markOf(p){ return Math.max(0, Math.round(p.stake*(1+p.ret+p.shock))); }
+function markOf(p){
+  let v = p.entry * Math.pow(1+p.g, p.turns) * (1+p.shock);
+  if(p.dir==='short') v = Math.min(v, p.stake*2);
+  return Math.max(0, Math.round(v));
+}
 function netWorth(){ return cash + holdings.reduce((a,p)=>a+markOf(p),0); }
 function sellAll(){ holdings.forEach(p=>{ cash+=markOf(p); }); holdings=[]; }
 function sellHolding(i){ if(!holdings[i]) return; sndTick(); cash+=markOf(holdings[i]); holdings.splice(i,1); $('cash').textContent=money(cash); renderHoldings(); }
@@ -803,12 +810,13 @@ function revealOpportunity(reasonOk){
   let correct=correctCalls(inst).includes(call);
   if(squeezed) correct=false;
 
-  const ret=tradeReturn(inst, call, squeezed);
+  const pp=positionParams(inst, call, squeezed);
   let mark=0, d=0;
   if(committed>0){
     cash-=committed; d=-committed;
-    mark=Math.max(0,Math.round(committed*(1+ret)));
-    holdings.push({name:inst.name, dir:call==='invest'?'long':'short', stake:committed, ret:ret, shock:0});
+    const entry=Math.max(0,Math.round(committed*(1+pp.im)));
+    holdings.push({name:inst.name, dir:call==='invest'?'long':'short', stake:committed, entry:entry, g:pp.g, turns:0, shock:0});
+    mark=entry;
     renderHoldings();
   }
 
@@ -898,7 +906,7 @@ function paintBack(type, verdict, outcome, chips, win, cashDelta){
   $('next').classList.remove('hidden');
 }
 
-function nextCard(){ idx++; if(idx>=hand.length){ endGame(); return; } render(); }
+function nextCard(){ holdings.forEach(p=>p.turns++); idx++; if(idx>=hand.length){ endGame(); return; } render(); }
 
 function endGame(){
   sellAll();
