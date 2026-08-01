@@ -51,7 +51,7 @@
   .helper b{color:var(--brass);font-weight:600}
 
   .stage{position:relative;perspective:1400px;margin-bottom:9px}
-  .card{position:relative;width:100%;aspect-ratio:5/7;max-height:40dvh;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.8,.25,1)}
+  .card{position:relative;width:100%;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.8,.25,1), height .35s ease}
   .card.flipped{transform:rotateY(180deg)}
   .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;padding:18px 22px;
     display:flex;flex-direction:column;box-shadow:0 22px 40px -18px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.06) inset}
@@ -64,7 +64,7 @@
   .front.event .cardname{color:#28324f}
   .pitch{font-size:15px;line-height:1.48;color:#4a3c2c}
   .front.event .pitch{color:#37405c;font-size:16px}
-  .fundamentals{margin-top:auto;padding-top:13px;border-top:1px dashed rgba(42,32,24,.28)}
+  .fundamentals{margin-top:14px;padding-top:13px;border-top:1px dashed rgba(42,32,24,.28)}
   .fund-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
   .fk{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
   .fv{font-family:'Space Mono',monospace;font-weight:700;font-size:17px;color:var(--ink)}
@@ -82,7 +82,7 @@
   .reveal-reason b{color:var(--brass)}
   .reveal-reason .fb{display:block;margin-top:6px;color:rgba(255,255,255,.75);font-size:12px}
   .reveal-reason .fb.ok{color:#9ff0c0}
-  .delta{margin-top:auto;display:flex;gap:7px;flex-wrap:wrap;padding-top:14px}
+  .delta{margin-top:12px;display:flex;gap:7px;flex-wrap:wrap;padding-top:2px}
   .chiplet{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.28)}
   .chiplet.good{color:#9ff0c0}.chiplet.bad{color:#ffb3aa}.chiplet.brass{color:var(--brass)}
 
@@ -1032,6 +1032,7 @@ function render(){
     b.onclick=()=> isEvent?resolveEvent(o):chooseCall(o.key);
     box.appendChild(b)});
   box.classList.remove('hidden');
+  fitCard('front');
 }
 
 function chooseCall(key){
@@ -1191,7 +1192,10 @@ function paintBack(type, verdict, outcome, chips, win, cashDelta){
   $('verdict').textContent=verdict; $('outcome').textContent=outcome;
   const del=$('delta'); del.innerHTML='';
   chips.forEach(([t,cls],i)=>{const s=document.createElement('span');s.className='chiplet '+cls+' slam';s.style.animationDelay=(0.2+i*0.09)+'s';s.textContent=t;del.appendChild(s)});
+  $('reports').innerHTML='';
+  $('scoutRow').style.display='none';
   $('card').classList.add('flipped');
+  fitCard('back');
   const prevCash=cash-cashDelta;
   setTimeout(()=>{
     feedback(!!win);
@@ -1318,6 +1322,16 @@ function animateCount(el,from,to,win){
   requestAnimationFrame(step);
 }
 function setEcho(t){ const e=$('echo'); if(t){ e.textContent=t; e.style.display='block'; } else { e.textContent=''; e.style.display='none'; } }
+
+/* Size the card to the actual content of whichever face is showing — nothing can overflow. */
+function fitCard(face){
+  const card=$('card'), el=$(face);
+  requestAnimationFrame(()=>{
+    const h=Math.max(240, el.scrollHeight);
+    card.style.height=h+'px';
+  });
+}
+window.addEventListener('resize', ()=>{ const c=$('card'); if(c) fitCard(c.classList.contains('flipped')?'back':'front'); });
 
 renderRankbar('rankbar'); selectDiff('auto');
 ['touchend','pointerdown','click'].forEach(ev=>document.addEventListener(ev, unlockAudio, {passive:true}));
