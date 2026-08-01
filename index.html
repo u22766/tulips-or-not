@@ -155,7 +155,7 @@
   @keyframes flashfade{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
   .stage.pop{animation:pop .5s ease}
   .stage.shake{animation:shake .45s ease}
-  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.04)}100%{transform:scale(1)}}
+  @keyframes pop{0%{transform:scale(1)}35%{transform:scale(1.07)}60%{transform:scale(.98)}100%{transform:scale(1)}}
   @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
   .chiplet.slam{animation:slam .32s cubic-bezier(.2,.9,.3,1) backwards}
   @keyframes slam{0%{opacity:0;transform:scale(1.6)}60%{opacity:1;transform:scale(.92)}100%{transform:scale(1)}}
@@ -165,12 +165,26 @@
   .streak-banner.show{animation:rollin 1.5s ease forwards}
   @keyframes rollin{0%{opacity:0;transform:translateX(-50%) scale(.6) rotate(-6deg)}14%{opacity:1;transform:translateX(-50%) scale(1.12)}24%{transform:translateX(-50%) scale(1)}72%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-12px) scale(1)}}
 
+  .echo{margin-top:10px;font-size:12px;line-height:1.42;color:rgba(255,255,255,.72);font-style:italic;border-top:1px solid rgba(255,255,255,.14);padding-top:9px}
+  .screenflash{position:fixed;inset:0;pointer-events:none;z-index:50;opacity:0}
+  .screenflash.win{background:radial-gradient(circle at 50% 60%,rgba(212,175,55,.35),transparent 65%);animation:sflash .55s ease-out}
+  .screenflash.lose{background:radial-gradient(circle at 50% 55%,rgba(192,57,43,.42),transparent 60%);animation:sflash .5s ease-out}
+  @keyframes sflash{0%{opacity:0}12%{opacity:1}100%{opacity:0}}
+  .confetti{position:fixed;inset:0;pointer-events:none;z-index:55;overflow:hidden}
+  .cft{position:absolute;top:-24px;will-change:transform,opacity;opacity:0}
+  .cft.go{animation:cfall var(--dur,2200ms) cubic-bezier(.25,.6,.4,1) forwards}
+  @keyframes cfall{0%{opacity:1;transform:translateY(-10px) translateX(0) rotate(0)}100%{opacity:.85;transform:translateY(106vh) translateX(var(--drift,0)) rotate(var(--spin,720deg))}}
+  .wrap.qshake{animation:qshake .5s ease}
+  @keyframes qshake{0%,100%{transform:translateX(0)}15%{transform:translateX(-10px)}30%{transform:translateX(9px)}45%{transform:translateX(-7px)}60%{transform:translateX(6px)}75%{transform:translateX(-4px)}}
+  .stat.cash .val.up{color:#9ff0c0}.stat.cash .val.down{color:#ff9a8f}
+  .streak-banner.hot{background:linear-gradient(90deg,#ff5e3a,#ffcf4d)}
+
   @media (max-width:380px){h1{font-size:38px}.cardname{font-size:24px}.act{font-size:14px}}
   @media (prefers-reduced-motion:reduce){.card{transition:none}*{transition-duration:.01ms !important;animation:none !important}}
 </style>
 </head>
 <body>
-<div class="wrap">
+<div class="wrap" id="wrap">
 
   <section id="start" class="panel">
     <div class="flower-hero">Value vs. price</div>
@@ -225,6 +239,7 @@
           </div>
           <div class="outcome" id="outcome"></div>
           <div class="reveal-reason" id="revealReason"></div>
+          <div class="echo" id="echo"></div>
           <div class="delta" id="delta"></div>
         </div>
       </div>
@@ -253,122 +268,152 @@
 
 </div>
 
+<div class="screenflash" id="screenflash"></div>
+<div class="confetti" id="confetti"></div>
+
 <script>
 const HELP = 'Rule of thumb: a <b>steady</b> business is worth ~15\u00D7 its yearly earnings; a <b>fast grower</b>, maybe 25\u201330\u00D7. Pay far above that and you\u2019re betting on perfection. <b>No earnings? You\u2019re buying a story.</b>';
 
 /* Businesses have intrinsic quality + earnings. Price is generated each deal. */
 const BUSINESSES = [
-  // REAL — healthy earnings; verdict flips with price
-  {name:"Copper Creek Water", kind:"real", eps:1.8, fairPE:15,
+  // REAL — healthy earnings; verdict flips with price. maxPE = realistic sector ceiling.
+  {name:"Copper Creek Water", kind:"real", eps:1.8, fairPE:15, maxPE:24,
    desc:"A water utility serving 2 million homes. Slow, steady, dependable growth.",
-   note:"A dull, durable utility with dependable earnings — a real business."},
-  {name:"Old Reliable Soda", kind:"real", eps:2.2, fairPE:20,
+   note:"A dull, durable utility with dependable earnings — a real business.",
+   echo:"Real echo: regulated water and power utilities — dull, dependable compounders."},
+  {name:"Old Reliable Soda", kind:"real", eps:2.2, fairPE:20, maxPE:34,
    desc:"A 100-year-old soda brand with a global habit and a rising dividend. Steady grower.",
-   note:"A wide-moat brand that compounds for generations — a real business."},
-  {name:"Keystone Rail", kind:"real", eps:3.1, fairPE:19,
+   note:"A wide-moat brand that compounds for generations — a real business.",
+   echo:"Real echo: the wide-moat consumer brands that compounded for decades."},
+  {name:"Keystone Rail", kind:"real", eps:3.1, fairPE:19, maxPE:30,
    desc:"Owns railroads rivals can't rebuild. Steady, slowly growing, essential.",
-   note:"One of the widest moats there is — a genuinely good business."},
-  {name:"Silicon Foundry Chips", kind:"real", eps:2.6, fairPE:24,
+   note:"One of the widest moats there is — a genuinely good business.",
+   echo:"Real echo: freight railroads — famously durable, near-impossible to replicate."},
+  {name:"Silicon Foundry Chips", kind:"real", eps:2.6, fairPE:24, maxPE:45,
    desc:"Makes a component inside almost every device. Fast-growing, essential, hard to replace.",
-   note:"A fast-growing chokepoint in the supply chain — a high-quality business."},
-  {name:"Anchor Insurance", kind:"real", eps:3.4, fairPE:14,
+   note:"A fast-growing chokepoint in the supply chain — a high-quality business.",
+   echo:"Real echo: the 'picks and shovels' chip suppliers behind every device."},
+  {name:"Anchor Insurance", kind:"real", eps:3.4, fairPE:14, maxPE:22,
    desc:"Collects premiums, invests them, pays claims. Slow and simple to understand.",
-   note:"A simple, understandable cash machine — a real business."},
-  {name:"Meridian Cement", kind:"real", eps:2.9, fairPE:15,
+   note:"A simple, understandable cash machine — a real business.",
+   echo:"Real echo: the insurance 'float' model — boring, and quietly powerful."},
+  {name:"Meridian Cement", kind:"real", eps:2.9, fairPE:15, maxPE:24,
    desc:"Makes cement. Steady demand, no story, no buzz.",
-   note:"An unglamorous, steady compounder — a real business."},
-  {name:"Harbor Grocery", kind:"real", eps:1.6, fairPE:14,
+   note:"An unglamorous, steady compounder — a real business.",
+   echo:"Real echo: cement and aggregates — unglamorous, steady, essential."},
+  {name:"Harbor Grocery", kind:"real", eps:1.6, fairPE:14, maxPE:22,
    desc:"A regional supermarket chain. Thin margins, reliable, essential demand.",
-   note:"Recession-resistant, essential demand — a real business."},
-  {name:"Ironside Tools", kind:"real", eps:2.4, fairPE:18,
+   note:"Recession-resistant, essential demand — a real business.",
+   echo:"Real echo: grocers — thin margins, but demand that never disappears."},
+  {name:"Ironside Tools", kind:"real", eps:2.4, fairPE:18, maxPE:28,
    desc:"Industrial tools. No hype, steady earnings, shareholder-friendly.",
-   note:"A quiet, steady compounder the crowd ignores — a real business."},
-  {name:"Northstar Cloud", kind:"real", eps:2.0, fairPE:26,
+   note:"A quiet, steady compounder the crowd ignores — a real business.",
+   echo:"Real echo: old-economy industrials that quietly compound for decades."},
+  {name:"Northstar Cloud", kind:"real", eps:2.0, fairPE:26, maxPE:55,
    desc:"The clear leader in a fast-growing industry, with an edge rivals can't copy.",
-   note:"A real category leader with a durable edge — a high-quality growth business."},
-  {name:"Phoenix Motors", kind:"real", eps:2.1, fairPE:16,
+   note:"A real category leader with a durable edge — a high-quality growth business.",
+   echo:"Real echo: the category-leading cloud and software winners of the 2010s."},
+  {name:"Phoenix Motors", kind:"real", eps:2.1, fairPE:16, maxPE:28,
    desc:"A beaten-down maker with a credible plan, real cash, and insiders buying their own stock.",
-   note:"A real turnaround — insiders are backing it with their own money."},
+   note:"A real turnaround — insiders are backing it with their own money.",
+   echo:"Real echo: genuine turnarounds where insiders bought in with their own money first."},
 
   // HOLLOW — no real earnings; always a tulip
   {name:"GlowCoin", kind:"hollow", unit:"coin",
    desc:"A digital token with no product and no company — just the coin. Up 100\u00D7 on momentum.",
    note:"A hype token with nothing underneath — not a business.",
-   right:"No product, no company, no earnings — the price is pure momentum."},
+   right:"No product, no company, no earnings — the price is pure momentum.",
+   echo:"Real echo: countless crypto tokens that went vertical, then to near-zero."},
   {name:"BrightLeaf Organics", kind:"hollow",
    desc:"Up 300% this month; everyone's talking, your neighbor doubled his money. No profits.",
    note:"All hype, no earnings — not a real business yet.",
-   right:"It's soared on hype with no profits to back it up."},
+   right:"It's soared on hype with no profits to back it up.",
+   echo:"Real echo: the dot-com darlings that soared on story, then vanished."},
   {name:"MoonJet Rockets", kind:"hollow",
    desc:"Promises to mine asteroids next year. No rocket built. A wildly charismatic founder.",
    note:"A story with no product — not a business.",
-   right:"There's no product yet — just a story about the future."},
+   right:"There's no product yet — just a story about the future.",
+   echo:"Real echo: pre-product 'moonshot' stocks sold on vision alone."},
   {name:"PetPals.com", kind:"hollow",
    desc:"Online pet supplies burning cash fast, huge ad spend, no profit anywhere in sight.",
    note:"Spending itself to death with no path to profit.",
-   right:"It's burning cash with no realistic path to profit."},
+   right:"It's burning cash with no realistic path to profit.",
+   echo:"Real echo: Pets.com — a dot-com that burned cash and folded in under a year."},
   {name:"Plush Pals Collectibles", kind:"hollow", unit:"each",
    desc:"Little stuffed animals selling for hundreds. 'They'll be worth a fortune someday!'",
    note:"A mass-produced fad — no real scarcity, no earnings.",
-   right:"They're mass-produced — there's no real scarcity or earnings."},
+   right:"They're mass-produced — there's no real scarcity or earnings.",
+   echo:"Real echo: Beanie Babies — a '90s craze that crashed to near-nothing."},
   {name:"Aurora AI Everything", kind:"hollow",
    desc:"'We put AI in everything!' Vague on how it actually earns. Tripled on the buzzword.",
    note:"A buzzword in a costume — no clear way it earns.",
-   right:"It's riding a buzzword with no clear way to earn."},
+   right:"It's riding a buzzword with no clear way to earn.",
+   echo:"Real echo: every era's buzzword stocks — 'dot-com,' 'blockchain,' now 'AI.'"},
   {name:"GameStore Comeback", kind:"hollow",
    desc:"Up 900% because an online crowd is buying to 'stick it to Wall Street.' The business is unchanged.",
    note:"A crowd-driven squeeze — the business never actually improved.",
-   right:"The price jumped on a crowd's emotion, not a better business."},
+   right:"The price jumped on a crowd's emotion, not a better business.",
+   echo:"Real echo: GameStop's 2021 meme-stock squeeze."},
   {name:"Titan Telecom", kind:"hollow", fraud:true, eps:3.0,
    desc:"A giant phone company whose earnings look amazing — and rise suspiciously every single quarter.",
    note:"The 'earnings' were fabricated — there was no real profit at all.",
-   right:"Earnings this suspiciously smooth are worth doubting — they were faked."},
+   right:"Earnings this suspiciously smooth are worth doubting — they were faked.",
+   echo:"Real echo: WorldCom — one of the largest accounting frauds in history."},
   {name:"Summit Energy Trading", kind:"hollow", fraud:true, eps:4.0,
    desc:"'Most innovative company' several years running — with a business no one can quite explain.",
    note:"No one could explain how it earned, because it didn't — a fraud.",
-   right:"No one can explain how it earns — a giant red flag."},
+   right:"No one can explain how it earns — a giant red flag.",
+   echo:"Real echo: Enron — 'most innovative,' until it collapsed into fraud."},
 
   // DECLINING — real earnings now, but shrinking; a value trap at any price
   {name:"FilmStar Photo Co.", kind:"declining", eps:1.5,
    desc:"A trusted 80-year-old film brand — as the whole market shifts to digital.",
    note:"A famous brand whose entire market is disappearing.",
-   right:"Its core market is vanishing — cheap for a reason."},
+   right:"Its core market is vanishing — cheap for a reason.",
+   echo:"Real echo: Kodak — an icon wiped out when film went digital."},
   {name:"Blockbuster Video", kind:"declining", eps:1.8,
    desc:"The #1 movie-rental chain, stores everywhere — as streaming quietly replaces it.",
    note:"A leader being made obsolete by a new technology.",
-   right:"A new technology is quietly making it obsolete."},
+   right:"A new technology is quietly making it obsolete.",
+   echo:"Real echo: Blockbuster passed on Netflix, then streaming buried it."},
   {name:"Prairie Mall Holdings", kind:"declining", eps:1.2,
    desc:"Owns big malls with a nice dividend — as foot traffic bleeds to online shopping.",
    note:"Its foot traffic is structurally shrinking — a value trap.",
-   right:"Its foot traffic is structurally shrinking to online."},
-  {name:"Dividend Mirage", kind:"declining", eps:0.8,
-   desc:"Pays a huge 15% dividend. The business is shrinking and the payout tops what it earns.",
+   right:"Its foot traffic is structurally shrinking to online.",
+   echo:"Real echo: shopping-mall owners hollowed out by online shopping."},
+  {name:"Dividend Mirage", kind:"declining", eps:0.8, div:1.10,
+   desc:"A shrinking business paying out more than it earns.",
    note:"An unsustainable dividend on a shrinking business — it gets cut.",
-   right:"The dividend costs more than it earns — it can't last."},
+   right:"The dividend costs more than it earns — it can't last.",
+   echo:"Real echo: high-yield 'traps' that paid out more than they earned, then cut the dividend."},
 ];
 
 const EVENTS = [
   {name:"Market Storm", type:"event", verdict:"Market Storm",
    pitch:"A global shock hits. Every business on the table drops 30% at once — the strong and the weak alike. The headlines are terrifying, and everyone is selling.",
    outcome:"Crashes put great businesses on sale and expose the fragile. The ones who panic-sell lock in the loss; the prepared go shopping.",
+   echo:"Real echo: 2008 and 2020 — the crashes that rewarded the calm.",
    options:[{key:"hold",label:"Hold steady",sub:"do nothing",delta:0,correct:true},
      {key:"sell",label:"Sell it all",sub:"get out now",delta:-250,correct:false},
      {key:"buy",label:"Buy the dip",sub:"quality on sale",delta:200,correct:true}]},
   {name:"Rates Jump", type:"event", verdict:"Rates Jump",
    pitch:"Interest rates spike. Money is no longer 'free.' Speculative, no-profit story stocks get hit hardest — steady cash-generators hold up far better.",
    outcome:"When money stops being free, hype deflates and real earnings matter more. The cost of money changes what's valuable.",
+   echo:"Real echo: 2022 — rising rates crushed the no-profit story stocks first.",
    options:[{key:"chase",label:"Chase the hype dip",sub:"story stocks got cheap",delta:-200,correct:false},
      {key:"quality",label:"Move to cash-makers",sub:"own real profits",delta:150,correct:true},
      {key:"freeze",label:"Freeze up",sub:"do nothing at all",delta:0,correct:false}]},
   {name:"False Alarm", type:"event", verdict:"False Alarm",
    pitch:"A solid business you like just dropped 25% in a day — because the WHOLE market fell on scary headlines. Nothing actually changed at the company itself.",
    outcome:"A scary market doesn't change a healthy business. Selling with the crowd just locks in the loss. Strong companies recover.",
+   echo:"Real echo: the countless one-day scares that healthy businesses simply shrugged off.",
    options:[{key:"sell",label:"Sell before it drops more",sub:"protect yourself",delta:-200,correct:false},
      {key:"hold",label:"Hold — nothing changed",sub:"stay the course",delta:100,correct:true},
      {key:"buy",label:"Buy more, cheaper",sub:"same business, lower price",delta:150,correct:true}]},
   {name:"Recession", type:"event", verdict:"Recession",
    pitch:"A downturn hits. People stop buying luxuries and gadgets — but they still buy food, soap, and electricity, just like always.",
    outcome:"Some businesses barely notice hard times — people always need essentials. Know which of your holdings are recession-proof.",
+   echo:"Real echo: downturns where staples held their ground while luxuries sank.",
    options:[{key:"luxury",label:"Load up on luxuries",sub:"they fell the most",delta:-150,correct:false},
      {key:"staples",label:"Own the essentials",sub:"food, power, basics",delta:150,correct:true},
      {key:"cash",label:"Dump it all for cash",sub:"wait for the bottom",delta:-50,correct:false}]},
@@ -385,16 +430,29 @@ function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
 function money(n){return (n<0?'-$':'$')+Math.abs(n).toLocaleString()}
 
+function rint(lo,hi){ if(hi<lo) hi=lo; return lo+Math.floor(Math.random()*(hi-lo+1)); }
+
 /* Price an instance of a business */
 function makeInstance(b){
   const inst=Object.assign({},b);
   inst.unit=b.unit||'share';
   if(b.kind==='real'){
-    const scen=pick(SCEN); const f=FACTOR[scen];
-    inst.price=Math.max(1,Math.round(b.eps*b.fairPE*f));
-    inst.overpriced=f>1.35; inst.scen=scen; inst.hasEps=true;
+    const floor=Math.max(8, Math.round(b.fairPE*0.66));
+    const scen=pick(['bargain','bargain','fair','fair','fair','rich','rich','rich']);
+    let pe;
+    if(scen==='bargain') pe=rint(floor, Math.round(b.fairPE*0.82));
+    else if(scen==='fair') pe=rint(Math.round(b.fairPE*0.9), Math.round(b.fairPE*1.12));
+    else { const lo=Math.round(b.fairPE*1.35), hi=Math.max(lo+2, b.maxPE); pe=rint(lo, hi); }
+    inst.price=Math.max(1, Math.round(b.eps*pe));
+    inst.overpriced=(scen==='rich'); inst.scen=scen; inst.hasEps=true;
   } else if(b.kind==='declining'){
-    inst.price=Math.round(b.eps*pick([6,8,10,13]));
+    if(b.div){
+      inst.price=pick([7,9,11,13]);
+      const y=Math.round(inst.div/inst.price*100);
+      inst.desc="Pays a $"+inst.div.toFixed(2)+" dividend — about a "+y+"% yield. But the business is shrinking, and that payout is bigger than the $"+inst.eps.toFixed(2)+" it earns.";
+    } else {
+      inst.price=Math.round(b.eps*pick([6,8,10,13]));
+    }
     inst.overpriced=true; inst.hasEps=true;
   } else { // hollow
     if(b.fraud){ inst.price=Math.round(b.eps*pick([19,21,23])); inst.hasEps=true; }
@@ -522,6 +580,7 @@ function revealOpportunity(reasonOk){
   }
   const fb = bonus ? '<span class="fb ok">\u2713 Right reason.</span>' : '<span class="fb">The read that mattered: \u201C'+curReason+'\u201D</span>';
   $('revealReason').innerHTML='<b>'+vv+'</b>'+fb;
+  setEcho(inst.echo);
 
   if(correct) streak++; else streak=0;
   paintBack(inst.kind==='real'?'real':inst.kind==='declining'?'trap':'tulip', tag(inst), inst.note, chips, correct, d);
@@ -542,6 +601,7 @@ function resolveEvent(opt){
   else { chips.push(['no point','bad']); panicked++; }
   if(opt.delta!==0) chips.push([(opt.delta>0?'+':'')+money(opt.delta), opt.delta>0?'good':'bad']);
   $('revealReason').innerHTML='';
+  setEcho(cur.echo);
   if(opt.correct) streak++; else streak=0;
   paintBack('event', cur.verdict, cur.outcome, chips, opt.correct, opt.delta);
 }
@@ -579,6 +639,7 @@ function endGame(){
   if(panicked>=2) note+=" And mind the panic button — the market shook you loose a few times when standing pat was smarter.";
   const p=$('persona'); p.className='persona '+cls; p.textContent=title;
   $('personaNote').textContent=note;
+  if(cls==='sharp'){ confetti(70); sndStreak(3); }
 }
 
 /* ---------- pizzazz: sound + effects ---------- */
@@ -587,22 +648,45 @@ function ac(){ try{ if(!AC) AC=new (window.AudioContext||window.webkitAudioConte
 function toggleMute(){ muted=!muted; $('mute').textContent=muted?'\uD83D\uDD07':'\uD83D\uDD0A'; if(!muted) ac(); }
 function blip(freq,t0,dur,type,vol){ const c=ac(); if(!c||muted) return; const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0; o.type=type||'triangle'; o.frequency.setValueAtTime(freq,t); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.2,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.03); }
 function bend(f1,f2,t0,dur,type,vol){ const c=ac(); if(!c||muted) return; const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0; o.type=type||'sawtooth'; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(Math.max(20,f2),t+dur); g.gain.setValueAtTime(vol||0.18,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.03); }
-function sndWin(){ [523,659,784,1046].forEach((f,i)=>blip(f,i*0.07,0.22,'triangle',0.22)); blip(1568,0.28,0.25,'sine',0.13); }
-function sndStreak(){ [523,659,784,1046,1318,1568].forEach((f,i)=>blip(f,i*0.06,0.24,'square',0.15)); blip(2093,0.42,0.3,'sine',0.11); }
-function sndLose(){ bend(320,150,0,0.22,'square',0.2); bend(240,110,0.16,0.32,'square',0.18); }
+function sndWin(){ [523,659,784,1046,1318].forEach((f,i)=>blip(f,i*0.055,0.22,'triangle',0.22)); [1046,1318,1568].forEach(f=>blip(f,0.32,0.42,'sine',0.12)); }
+function sndStreak(tier){ const notes=[523,659,784,1046,1318,1568,2093,2637]; notes.slice(0,4+tier).forEach((f,i)=>blip(f,i*0.05,0.24,'square',0.16)); [1568,2093,2637].forEach((f,i)=>blip(f,0.4+i*0.02,0.45,'sine',0.12)); }
+function sndLose(){ bend(300,120,0,0.28,'square',0.22); bend(220,90,0.16,0.34,'square',0.2); blip(70,0.02,0.3,'sine',0.24); }
 function sndTick(){ blip(700,0,0.04,'square',0.05); }
 
 function anim(el,cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
 function popEl(el){ anim(el,'bump'); }
 function flash(win){ const f=$('flash'); f.className='flash'; void f.offsetWidth; f.classList.add(win?'win':'lose'); }
-function showStreak(n){ const b=$('streakBanner'); b.textContent='\uD83D\uDD25 ON A ROLL! \u00D7'+n; anim(b,'show'); }
+function screenFlash(win){ const s=$('screenflash'); s.className='screenflash'; void s.offsetWidth; s.classList.add(win?'win':'lose'); }
+function flashCash(dir){ const v=$('cash'); v.classList.remove('up','down'); void v.offsetWidth; v.classList.add(dir); setTimeout(()=>v.classList.remove(dir),750); }
+function streakTier(n){ return n>=7?3:n>=5?2:n>=3?1:0; }
+function showStreak(n){ const t=streakTier(n); const label=t>=3?'\uD83C\uDF2A LEGENDARY':t>=2?'\u26A1 UNSTOPPABLE':'\uD83D\uDD25 ON A ROLL'; const b=$('streakBanner'); b.textContent=label+' \u00D7'+n; b.className='streak-banner'+(t>=2?' hot':''); anim(b,'show'); }
+
+const CFT_COLORS=['#D4AF37','#C0392B','#3E7C5A','#F1E7CE','#4f79c7','#ff9a3d'];
+function confetti(n){
+  const c=$('confetti');
+  for(let i=0;i<n;i++){
+    const p=document.createElement('div'); p.className='cft';
+    const size=6+Math.random()*8;
+    p.style.left=(Math.random()*100)+'vw';
+    p.style.top=(-10-Math.random()*40)+'px';
+    p.style.width=size+'px'; p.style.height=(size*(0.5+Math.random()))+'px';
+    p.style.background=CFT_COLORS[i%CFT_COLORS.length];
+    if(Math.random()<0.4) p.style.borderRadius='50%';
+    p.style.setProperty('--drift',((Math.random()-0.5)*220).toFixed(0)+'px');
+    p.style.setProperty('--spin',(360+Math.random()*900).toFixed(0)+'deg');
+    p.style.setProperty('--dur',(1800+Math.random()*1400).toFixed(0)+'ms');
+    c.appendChild(p);
+    requestAnimationFrame(()=>p.classList.add('go'));
+    setTimeout(()=>p.remove(),3400);
+  }
+}
 function burst(win){
-  const fx=$('fx'), n=win?16:7;
+  const fx=$('fx'), n=win?24:9;
   for(let i=0;i<n;i++){
     const p=document.createElement('div');
-    p.className='pcl '+(win?(Math.random()<0.72?'coin':'leaf'):'ash');
-    const ang=win?(-Math.PI/2+(Math.random()-0.5)*Math.PI*1.15):(Math.PI/2+(Math.random()-0.5)*0.9);
-    const dist=win?(70+Math.random()*120):(45+Math.random()*70);
+    p.className='pcl '+(win?(Math.random()<0.7?'coin':'leaf'):'ash');
+    const ang=win?(-Math.PI/2+(Math.random()-0.5)*Math.PI*1.3):(Math.PI/2+(Math.random()-0.5)*0.9);
+    const dist=win?(80+Math.random()*150):(45+Math.random()*70);
     const dx=Math.cos(ang)*dist, dy=Math.sin(ang)*dist+(win?0:26);
     p.style.setProperty('--dx',dx.toFixed(0)+'px');
     p.style.setProperty('--dy',dy.toFixed(0)+'px');
@@ -614,16 +698,23 @@ function burst(win){
   }
 }
 function feedback(win){
-  flash(win);
-  if(win){ anim($('stage'),'pop'); burst(true); if(streak>=3){ sndStreak(); showStreak(streak); } else sndWin(); }
-  else { anim($('stage'),'shake'); burst(false); sndLose(); }
+  flash(win); screenFlash(win);
+  if(win){
+    anim($('stage'),'pop'); burst(true); flashCash('up');
+    const t=streakTier(streak);
+    confetti(26+t*22);
+    if(t>=1){ sndStreak(t); showStreak(streak); } else sndWin();
+  } else {
+    anim($('stage'),'shake'); anim($('wrap'),'qshake'); burst(false); flashCash('down'); sndLose();
+  }
 }
 function animateCount(el,from,to,win){
   const dur=650, t0=performance.now(), diff=to-from;
-  if(win && diff>0){ for(let i=0;i<5;i++) blip(1300,i*0.09,0.06,'square',0.08); }
+  if(win && diff>0){ for(let i=0;i<8;i++) blip(1150+i*70,i*0.055,0.05,'square',0.08); }
   function step(now){ let p=Math.min(1,(now-t0)/dur); p=1-Math.pow(1-p,3); el.textContent=money(Math.round(from+diff*p)); if(p<1) requestAnimationFrame(step); else el.textContent=money(to); }
   requestAnimationFrame(step);
 }
+function setEcho(t){ const e=$('echo'); if(t){ e.textContent=t; e.style.display='block'; } else { e.textContent=''; e.style.display='none'; } }
 </script>
 </body>
 </html>
