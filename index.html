@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tulips or Not?</title>
+<meta name="description" content="Can you tell a real business from a tulip? A quick card game that teaches you to weigh price against value — and spot the bubbles. Built for board-game lovers.">
+<meta name="theme-color" content="#193A2C">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23193A2C'/%3E%3Cpath d='M16 27 V15' stroke='%23F1E7CE' stroke-width='2.4' fill='none'/%3E%3Cpath d='M16 16 C11 16 9 10 10.5 6 C12.5 8.5 14.5 8.5 16 6 C17.5 8.5 19.5 8.5 21.5 6 C23 10 21 16 16 16Z' fill='%23C0392B'/%3E%3C/svg%3E">
+<!-- Social preview. If a platform ignores the relative image, replace with your full URL, e.g. https://YOUR-USERNAME.github.io/tulips-or-not/og-preview.png -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="Tulips or Not? — a game of value vs. hype">
+<meta property="og:description" content="Can you tell a real business from a tulip? Weigh price against value and make the call. A quick card game for board-game lovers.">
+<meta property="og:image" content="og-preview.png">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Tulips or Not? — a game of value vs. hype">
+<meta name="twitter:description" content="Can you tell a real business from a tulip? Weigh price against value and make the call.">
+<meta name="twitter:image" content="og-preview.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,900&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --felt:#193A2C; --felt-deep:#122A20;
+    --parchment:#F1E7CE; --parchment-edge:#E4D6B4;
+    --ink:#2A2018; --ink-soft:#6A5C48;
+    --tulip:#C0392B; --leaf:#3E7C5A; --rot:#6B4F73;
+    --storm:#3C4A6B; --brass:#D4AF37;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%}
+  body{font-family:'Inter',system-ui,sans-serif;color:var(--parchment);
+    background:radial-gradient(140% 120% at 50% 0%, #1f4433 0%, var(--felt) 45%, var(--felt-deep) 100%);
+    min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:12px;overflow-x:hidden}
+  .wrap{width:100%;max-width:440px;margin:auto 0}
+
+  .ledger{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
+  .stat{display:flex;flex-direction:column;gap:2px}
+  .stat .label{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(241,231,206,.55);font-weight:600}
+  .stat .val{font-family:'Space Mono',monospace;font-weight:700;font-size:20px;line-height:1}
+  .stat.wisdom{text-align:right}.stat.wisdom .val{color:var(--brass)}
+  .pips{display:flex;gap:4px;align-items:center;justify-content:center;flex:1;flex-wrap:wrap}
+  .pip{width:6px;height:6px;border-radius:50%;background:rgba(241,231,206,.2)}
+  .pip.done{background:var(--brass)}
+  .pip.current{background:var(--parchment);box-shadow:0 0 0 3px rgba(241,231,206,.18)}
+  .pip.ev{border-radius:1px;transform:rotate(45deg);background:rgba(241,231,206,.32)}
+  .pip.ev.done{background:var(--storm)}.pip.ev.current{background:#9fb0e6}
+
+  .helper{text-align:center;font-size:11.5px;line-height:1.45;color:rgba(241,231,206,.62);
+    background:rgba(0,0,0,.16);border:1px solid rgba(241,231,206,.1);border-radius:10px;padding:9px 12px;margin-bottom:14px}
+  .helper b{color:var(--brass);font-weight:600}
+
+  .stage{position:relative;perspective:1400px;margin-bottom:14px}
+  .card{position:relative;width:100%;aspect-ratio:5/7;max-height:52dvh;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.8,.25,1)}
+  .card.flipped{transform:rotateY(180deg)}
+  .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;padding:24px 24px;
+    display:flex;flex-direction:column;box-shadow:0 22px 40px -18px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.06) inset}
+  .front{background:radial-gradient(120% 100% at 0% 0%, #f6eed8 0%, var(--parchment) 55%, var(--parchment-edge) 100%);
+    color:var(--ink);border:1px solid rgba(0,0,0,.12)}
+  .front.event{background:radial-gradient(120% 100% at 0% 0%, #eef1f8 0%, #dbe0ee 60%, #c9d0e4 100%)}
+  .eyebrow{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  .front.event .eyebrow{color:#4a5578}
+  .cardname{font-family:'Fraunces',serif;font-weight:900;font-size:27px;line-height:1.03;margin:7px 0 11px;letter-spacing:-.01em}
+  .front.event .cardname{color:#28324f}
+  .pitch{font-size:15px;line-height:1.48;color:#4a3c2c}
+  .front.event .pitch{color:#37405c;font-size:16px}
+  .fundamentals{margin-top:auto;padding-top:13px;border-top:1px dashed rgba(42,32,24,.28)}
+  .fund-row{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:5px}
+  .fk{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-soft);font-weight:600}
+  .fv{font-family:'Space Mono',monospace;font-weight:700;font-size:17px;color:var(--ink)}
+  .fund-mult{margin-top:7px;font-size:12px;color:#7a5a2e;font-style:italic;font-weight:500}
+
+  .back{transform:rotateY(180deg);color:#fff;border:1px solid rgba(255,255,255,.14);background:var(--rot);justify-content:flex-start}
+  .back.real{background:linear-gradient(160deg,#2f6a4b,#1f4a34)}
+  .back.tulip{background:linear-gradient(160deg,#c0392b,#8f2a20)}
+  .back.trap{background:linear-gradient(160deg,#6B4F73,#4a3652)}
+  .back.event{background:linear-gradient(160deg,#3C4A6B,#242f4a)}
+  .verdict-row{display:flex;align-items:center;gap:13px;margin-bottom:11px}
+  .verdict{font-family:'Fraunces',serif;font-weight:900;font-size:24px;text-transform:uppercase;line-height:1}
+  .outcome{font-size:14.5px;line-height:1.48;color:rgba(255,255,255,.94)}
+  .reveal-reason{margin-top:12px;padding:11px 13px;border-radius:10px;background:rgba(0,0,0,.24);font-size:13px;line-height:1.45}
+  .reveal-reason b{color:var(--brass)}
+  .reveal-reason .fb{display:block;margin-top:6px;color:rgba(255,255,255,.75);font-size:12px}
+  .reveal-reason .fb.ok{color:#9ff0c0}
+  .delta{margin-top:auto;display:flex;gap:7px;flex-wrap:wrap;padding-top:14px}
+  .chiplet{font-family:'Space Mono',monospace;font-weight:700;font-size:12px;padding:5px 10px;border-radius:999px;background:rgba(0,0,0,.28)}
+  .chiplet.good{color:#9ff0c0}.chiplet.bad{color:#ffb3aa}.chiplet.brass{color:var(--brass)}
+
+  .mark{width:42px;height:42px;flex:none}
+  .mark .stem{stroke:rgba(255,255,255,.85);stroke-width:6;fill:none;stroke-linecap:round}
+  .mark .leaf{fill:rgba(255,255,255,.5)}.mark .bloom{fill:#fff}
+  .back.real .bloom{fill:#bff3d3}.back.tulip .bloom{fill:#ffd7d1}.back.trap .bloom{fill:#e6d6ee}
+  .back.tulip .petals{transform:translateY(2px) scaleY(.86);transform-origin:center}
+  .mark.storm{display:none}
+  .mark.storm path{fill:none;stroke:#c7d2f0;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+  .back.event .mark.flower{display:none}.back.event .mark.storm{display:block}
+
+  .prompt{text-align:center;font-size:13px;letter-spacing:.03em;color:rgba(241,231,206,.7);margin-bottom:11px;min-height:18px;font-weight:500}
+  .actions{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .reasons{display:flex;flex-direction:column;gap:9px}
+  button{font-family:inherit;cursor:pointer;border:none;color:inherit}
+  .act{padding:14px 8px;border-radius:13px;font-weight:600;font-size:15px;background:rgba(241,231,206,.07);
+    border:1px solid rgba(241,231,206,.22);color:var(--parchment);transition:transform .12s ease,background .2s,border-color .2s;
+    display:flex;flex-direction:column;align-items:center;gap:3px;text-align:center}
+  .act .sub{font-size:10px;letter-spacing:.05em;text-transform:uppercase;opacity:.6;font-weight:600}
+  .act:hover{background:rgba(241,231,206,.14);transform:translateY(-2px)}
+  .act.k-invest:hover{border-color:var(--leaf)}.act.k-short:hover{border-color:var(--tulip)}
+  .act.k-pass:hover{border-color:var(--brass)}.act.ev:hover{border-color:#9fb0e6}
+  .act:active{transform:translateY(0)}
+  .reason{text-align:left;padding:14px 16px;border-radius:12px;font-size:14px;line-height:1.4;background:var(--parchment);
+    color:var(--ink);border:1px solid rgba(0,0,0,.1);transition:transform .12s ease, box-shadow .2s;font-weight:500}
+  .reason:hover{transform:translateY(-2px);box-shadow:0 8px 18px -10px rgba(0,0,0,.6)}
+  .next{width:100%;padding:16px;border-radius:13px;font-weight:700;font-size:16px;background:var(--brass);
+    color:#2a2008;transition:filter .2s,transform .12s;letter-spacing:.02em}
+  .next:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .hidden{display:none !important}
+
+  .panel{background:rgba(0,0,0,.16);border:1px solid rgba(241,231,206,.14);border-radius:20px;padding:34px 28px;
+    text-align:center;box-shadow:0 22px 44px -20px rgba(0,0,0,.6)}
+  .flower-hero{font-family:'Fraunces';font-weight:900;font-size:15px;letter-spacing:.32em;text-transform:uppercase;color:var(--brass);margin-bottom:14px}
+  h1{font-family:'Fraunces',serif;font-weight:900;font-size:46px;line-height:.98;letter-spacing:-.02em;margin-bottom:16px}
+  h1 .q{color:var(--tulip)}
+  .lede{font-size:15px;line-height:1.55;color:rgba(241,231,206,.82);margin-bottom:8px}
+  .lede.small{font-size:13px;color:rgba(241,231,206,.6);margin-bottom:24px}
+  .start-btn{width:100%;padding:17px;border-radius:14px;font-weight:700;font-size:17px;background:var(--brass);
+    color:#2a2008;letter-spacing:.02em;transition:filter .2s,transform .12s}
+  .start-btn:hover{filter:brightness(1.06);transform:translateY(-1px)}
+  .how{text-align:left;margin:4px 0 22px;display:flex;flex-direction:column;gap:11px}
+  .how-row{display:flex;align-items:flex-start;gap:12px;font-size:14px;line-height:1.4;color:rgba(241,231,206,.82)}
+  .how-n{flex:none;width:24px;height:24px;border-radius:50%;background:rgba(212,175,55,.16);border:1px solid rgba(212,175,55,.4);
+    color:var(--brass);font-family:'Space Mono',monospace;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .foot{margin-top:14px;font-size:12px;color:rgba(241,231,206,.5);letter-spacing:.02em}
+  .persona{font-family:'Fraunces',serif;font-weight:900;font-size:34px;margin:6px 0 4px;line-height:1.05}
+  .persona.sharp{color:var(--brass)}.persona.cynic{color:#8fb9ff}.persona.speculator{color:var(--tulip)}
+  .persona-note{font-size:14px;line-height:1.5;color:rgba(241,231,206,.8);margin-bottom:22px}
+  .scoreboard{display:flex;gap:12px;margin-bottom:22px}
+  .score-cell{flex:1;background:rgba(0,0,0,.22);border-radius:14px;padding:16px 8px}
+  .score-cell .n{font-family:'Space Mono',monospace;font-weight:700;font-size:24px}
+  .score-cell.cash .n{color:var(--parchment)}.score-cell.wis .n{color:var(--brass)}.score-cell.sharp .n{color:#9ff0c0}
+  .score-cell .k{font-size:10px;letter-spacing:.11em;text-transform:uppercase;color:rgba(241,231,206,.55);margin-top:5px;font-weight:600}
+
+  .right-group{display:flex;align-items:center;gap:10px}
+  .mute{width:30px;height:30px;border-radius:50%;background:rgba(241,231,206,.08);border:1px solid rgba(241,231,206,.2);font-size:14px;line-height:1;display:flex;align-items:center;justify-content:center;color:var(--parchment);padding:0;flex:none}
+  .mute:hover{background:rgba(241,231,206,.16)}
+  .fx{position:absolute;inset:0;pointer-events:none;overflow:visible;z-index:5}
+  .pcl{position:absolute;left:50%;top:44%;width:12px;height:12px;border-radius:50%;opacity:0;will-change:transform,opacity}
+  .pcl.coin{background:radial-gradient(circle at 35% 30%,#ffe9a3,var(--brass));box-shadow:0 0 6px rgba(212,175,55,.6)}
+  .pcl.leaf{background:var(--leaf);border-radius:60% 0 60% 60%}
+  .pcl.ash{background:#6b5b73;width:9px;height:9px}
+  .pcl.go{animation:burst var(--dur,900ms) cubic-bezier(.15,.7,.3,1) forwards}
+  @keyframes burst{0%{opacity:1;transform:translate(-50%,-50%) scale(.4)}70%{opacity:1}100%{opacity:0;transform:translate(calc(-50% + var(--dx)),calc(-50% + var(--dy))) scale(1) rotate(var(--r))}}
+  .flash{position:absolute;inset:0;border-radius:16px;opacity:0;pointer-events:none;z-index:4}
+  .flash.win{background:radial-gradient(circle,rgba(212,175,55,.55),transparent 70%);animation:flashfade .5s ease-out}
+  .flash.lose{background:radial-gradient(circle,rgba(192,57,43,.5),transparent 70%);animation:flashfade .5s ease-out}
+  @keyframes flashfade{0%{opacity:0}15%{opacity:1}100%{opacity:0}}
+  .stage.pop{animation:pop .5s ease}
+  .stage.shake{animation:shake .45s ease}
+  @keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.04)}100%{transform:scale(1)}}
+  @keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(4px)}}
+  .chiplet.slam{animation:slam .32s cubic-bezier(.2,.9,.3,1) backwards}
+  @keyframes slam{0%{opacity:0;transform:scale(1.6)}60%{opacity:1;transform:scale(.92)}100%{transform:scale(1)}}
+  .bump{display:inline-block;animation:bump .4s ease}
+  @keyframes bump{0%{transform:scale(1)}40%{transform:scale(1.28)}100%{transform:scale(1)}}
+  .streak-banner{position:absolute;left:50%;top:6px;transform:translateX(-50%) scale(.6);background:linear-gradient(90deg,#ffcf4d,#ff9a3d);color:#3a2400;font-weight:800;padding:7px 15px;border-radius:999px;font-size:13px;letter-spacing:.02em;opacity:0;z-index:6;white-space:nowrap;box-shadow:0 6px 18px -6px rgba(255,150,40,.7)}
+  .streak-banner.show{animation:rollin 1.5s ease forwards}
+  @keyframes rollin{0%{opacity:0;transform:translateX(-50%) scale(.6) rotate(-6deg)}14%{opacity:1;transform:translateX(-50%) scale(1.12)}24%{transform:translateX(-50%) scale(1)}72%{opacity:1}100%{opacity:0;transform:translateX(-50%) translateY(-12px) scale(1)}}
+
+  @media (max-width:380px){h1{font-size:38px}.cardname{font-size:24px}.act{font-size:14px}}
+  @media (prefers-reduced-motion:reduce){.card{transition:none}*{transition-duration:.01ms !important;animation:none !important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section id="start" class="panel">
+    <div class="flower-hero">Value vs. price</div>
+    <h1>Tulips<span class="q">?</span><br>or Not</h1>
+    <p class="lede">The same businesses turn up at different prices. A wonderful company is a smart buy when it's cheap — and a <b>tulip</b> when it's not.</p>
+    <p class="lede small">Weigh the price against what the business earns. Is it a tulip at <i>this</i> price?</p>
+    <div class="how">
+      <div class="how-row"><span class="how-n">1</span><span>Read the business — and the price it's asking.</span></div>
+      <div class="how-row"><span class="how-n">2</span><span>Call it: Invest, Pass, or Short — then say why.</span></div>
+      <div class="how-row"><span class="how-n">3</span><span>Score for the right call, a bonus for the right reason.</span></div>
+    </div>
+    <button class="start-btn" onclick="startGame()">Deal the deck</button>
+    <p class="foot">Prototype · tap 🔊 for sound · your feedback shapes it</p>
+  </section>
+
+  <section id="game" class="hidden">
+    <div class="ledger">
+      <div class="stat cash"><span class="label">Cash</span><span class="val" id="cash">$1,000</span></div>
+      <div class="pips" id="pips"></div>
+      <div class="right-group">
+        <div class="stat wisdom"><span class="label">Tulip Score</span><span class="val" id="wisdom">0</span></div>
+        <button class="mute" id="mute" onclick="toggleMute()">🔊</button>
+      </div>
+    </div>
+
+    <div class="helper" id="helper"></div>
+
+    <div class="stage" id="stage">
+      <div class="card" id="card">
+        <div class="face front" id="front">
+          <span class="eyebrow" id="eyebrow"></span>
+          <div class="cardname" id="cardname"></div>
+          <div class="pitch" id="pitch"></div>
+          <div class="fundamentals" id="fund">
+            <div class="fund-row"><span class="fk">Yearly earnings</span><span class="fv" id="eps"></span></div>
+            <div class="fund-row"><span class="fk">Price</span><span class="fv" id="price"></span></div>
+            <div class="fund-mult" id="mult"></div>
+          </div>
+        </div>
+        <div class="face back" id="back">
+          <div class="verdict-row">
+            <svg class="mark flower" viewBox="0 0 40 40" aria-hidden="true">
+              <path class="stem" d="M20 38 V20"/>
+              <path class="leaf" d="M20 30 C10 28 8 20 8 20 C16 20 20 26 20 30Z"/>
+              <path class="leaf" d="M20 33 C30 31 32 24 32 24 C24 24 20 29 20 33Z"/>
+              <g class="petals"><path class="bloom" d="M20 20 C14 20 11 14 13 9 C16 12 18 12 20 9 C22 12 24 12 27 9 C29 14 26 20 20 20Z"/></g>
+            </svg>
+            <svg class="mark storm" viewBox="0 0 40 40" aria-hidden="true">
+              <path d="M4 26 L14 14 L22 22 L36 8"/><path d="M28 8 H36 V16"/>
+            </svg>
+            <div class="verdict" id="verdict"></div>
+          </div>
+          <div class="outcome" id="outcome"></div>
+          <div class="reveal-reason" id="revealReason"></div>
+          <div class="delta" id="delta"></div>
+        </div>
+      </div>
+      <div class="fx" id="fx"></div>
+      <div class="flash" id="flash"></div>
+      <div class="streak-banner" id="streakBanner"></div>
+    </div>
+
+    <div class="prompt" id="prompt"></div>
+    <div class="actions" id="actions"></div>
+    <div class="reasons hidden" id="reasons"></div>
+    <button class="next hidden" id="next" onclick="nextCard()">Next card</button>
+  </section>
+
+  <section id="end" class="panel hidden">
+    <div class="flower-hero">Session complete</div>
+    <div class="persona" id="persona"></div>
+    <p class="persona-note" id="personaNote"></p>
+    <div class="scoreboard">
+      <div class="score-cell cash"><div class="n" id="fCash"></div><div class="k">Cash</div></div>
+      <div class="score-cell wis"><div class="n" id="fWis"></div><div class="k">Tulip Score</div></div>
+      <div class="score-cell sharp"><div class="n" id="fSharp"></div><div class="k">Sharp calls</div></div>
+    </div>
+    <button class="start-btn" onclick="startGame()">Play again</button>
+  </section>
+
+</div>
+
+<script>
+const HELP = 'Rule of thumb: a <b>steady</b> business is worth ~15\u00D7 its yearly earnings; a <b>fast grower</b>, maybe 25\u201330\u00D7. Pay far above that and you\u2019re betting on perfection. <b>No earnings? You\u2019re buying a story.</b>';
+
+/* Businesses have intrinsic quality + earnings. Price is generated each deal. */
+const BUSINESSES = [
+  // REAL — healthy earnings; verdict flips with price
+  {name:"Copper Creek Water", kind:"real", eps:1.8, fairPE:15,
+   desc:"A water utility serving 2 million homes. Slow, steady, dependable growth.",
+   note:"A dull, durable utility with dependable earnings — a real business."},
+  {name:"Old Reliable Soda", kind:"real", eps:2.2, fairPE:20,
+   desc:"A 100-year-old soda brand with a global habit and a rising dividend. Steady grower.",
+   note:"A wide-moat brand that compounds for generations — a real business."},
+  {name:"Keystone Rail", kind:"real", eps:3.1, fairPE:19,
+   desc:"Owns railroads rivals can't rebuild. Steady, slowly growing, essential.",
+   note:"One of the widest moats there is — a genuinely good business."},
+  {name:"Silicon Foundry Chips", kind:"real", eps:2.6, fairPE:24,
+   desc:"Makes a component inside almost every device. Fast-growing, essential, hard to replace.",
+   note:"A fast-growing chokepoint in the supply chain — a high-quality business."},
+  {name:"Anchor Insurance", kind:"real", eps:3.4, fairPE:14,
+   desc:"Collects premiums, invests them, pays claims. Slow and simple to understand.",
+   note:"A simple, understandable cash machine — a real business."},
+  {name:"Meridian Cement", kind:"real", eps:2.9, fairPE:15,
+   desc:"Makes cement. Steady demand, no story, no buzz.",
+   note:"An unglamorous, steady compounder — a real business."},
+  {name:"Harbor Grocery", kind:"real", eps:1.6, fairPE:14,
+   desc:"A regional supermarket chain. Thin margins, reliable, essential demand.",
+   note:"Recession-resistant, essential demand — a real business."},
+  {name:"Ironside Tools", kind:"real", eps:2.4, fairPE:18,
+   desc:"Industrial tools. No hype, steady earnings, shareholder-friendly.",
+   note:"A quiet, steady compounder the crowd ignores — a real business."},
+  {name:"Northstar Cloud", kind:"real", eps:2.0, fairPE:26,
+   desc:"The clear leader in a fast-growing industry, with an edge rivals can't copy.",
+   note:"A real category leader with a durable edge — a high-quality growth business."},
+  {name:"Phoenix Motors", kind:"real", eps:2.1, fairPE:16,
+   desc:"A beaten-down maker with a credible plan, real cash, and insiders buying their own stock.",
+   note:"A real turnaround — insiders are backing it with their own money."},
+
+  // HOLLOW — no real earnings; always a tulip
+  {name:"GlowCoin", kind:"hollow", unit:"coin",
+   desc:"A digital token with no product and no company — just the coin. Up 100\u00D7 on momentum.",
+   note:"A hype token with nothing underneath — not a business.",
+   right:"No product, no company, no earnings — the price is pure momentum."},
+  {name:"BrightLeaf Organics", kind:"hollow",
+   desc:"Up 300% this month; everyone's talking, your neighbor doubled his money. No profits.",
+   note:"All hype, no earnings — not a real business yet.",
+   right:"It's soared on hype with no profits to back it up."},
+  {name:"MoonJet Rockets", kind:"hollow",
+   desc:"Promises to mine asteroids next year. No rocket built. A wildly charismatic founder.",
+   note:"A story with no product — not a business.",
+   right:"There's no product yet — just a story about the future."},
+  {name:"PetPals.com", kind:"hollow",
+   desc:"Online pet supplies burning cash fast, huge ad spend, no profit anywhere in sight.",
+   note:"Spending itself to death with no path to profit.",
+   right:"It's burning cash with no realistic path to profit."},
+  {name:"Plush Pals Collectibles", kind:"hollow", unit:"each",
+   desc:"Little stuffed animals selling for hundreds. 'They'll be worth a fortune someday!'",
+   note:"A mass-produced fad — no real scarcity, no earnings.",
+   right:"They're mass-produced — there's no real scarcity or earnings."},
+  {name:"Aurora AI Everything", kind:"hollow",
+   desc:"'We put AI in everything!' Vague on how it actually earns. Tripled on the buzzword.",
+   note:"A buzzword in a costume — no clear way it earns.",
+   right:"It's riding a buzzword with no clear way to earn."},
+  {name:"GameStore Comeback", kind:"hollow",
+   desc:"Up 900% because an online crowd is buying to 'stick it to Wall Street.' The business is unchanged.",
+   note:"A crowd-driven squeeze — the business never actually improved.",
+   right:"The price jumped on a crowd's emotion, not a better business."},
+  {name:"Titan Telecom", kind:"hollow", fraud:true, eps:3.0,
+   desc:"A giant phone company whose earnings look amazing — and rise suspiciously every single quarter.",
+   note:"The 'earnings' were fabricated — there was no real profit at all.",
+   right:"Earnings this suspiciously smooth are worth doubting — they were faked."},
+  {name:"Summit Energy Trading", kind:"hollow", fraud:true, eps:4.0,
+   desc:"'Most innovative company' several years running — with a business no one can quite explain.",
+   note:"No one could explain how it earned, because it didn't — a fraud.",
+   right:"No one can explain how it earns — a giant red flag."},
+
+  // DECLINING — real earnings now, but shrinking; a value trap at any price
+  {name:"FilmStar Photo Co.", kind:"declining", eps:1.5,
+   desc:"A trusted 80-year-old film brand — as the whole market shifts to digital.",
+   note:"A famous brand whose entire market is disappearing.",
+   right:"Its core market is vanishing — cheap for a reason."},
+  {name:"Blockbuster Video", kind:"declining", eps:1.8,
+   desc:"The #1 movie-rental chain, stores everywhere — as streaming quietly replaces it.",
+   note:"A leader being made obsolete by a new technology.",
+   right:"A new technology is quietly making it obsolete."},
+  {name:"Prairie Mall Holdings", kind:"declining", eps:1.2,
+   desc:"Owns big malls with a nice dividend — as foot traffic bleeds to online shopping.",
+   note:"Its foot traffic is structurally shrinking — a value trap.",
+   right:"Its foot traffic is structurally shrinking to online."},
+  {name:"Dividend Mirage", kind:"declining", eps:0.8,
+   desc:"Pays a huge 15% dividend. The business is shrinking and the payout tops what it earns.",
+   note:"An unsustainable dividend on a shrinking business — it gets cut.",
+   right:"The dividend costs more than it earns — it can't last."},
+];
+
+const EVENTS = [
+  {name:"Market Storm", type:"event", verdict:"Market Storm",
+   pitch:"A global shock hits. Every business on the table drops 30% at once — the strong and the weak alike. The headlines are terrifying, and everyone is selling.",
+   outcome:"Crashes put great businesses on sale and expose the fragile. The ones who panic-sell lock in the loss; the prepared go shopping.",
+   options:[{key:"hold",label:"Hold steady",sub:"do nothing",delta:0,correct:true},
+     {key:"sell",label:"Sell it all",sub:"get out now",delta:-250,correct:false},
+     {key:"buy",label:"Buy the dip",sub:"quality on sale",delta:200,correct:true}]},
+  {name:"Rates Jump", type:"event", verdict:"Rates Jump",
+   pitch:"Interest rates spike. Money is no longer 'free.' Speculative, no-profit story stocks get hit hardest — steady cash-generators hold up far better.",
+   outcome:"When money stops being free, hype deflates and real earnings matter more. The cost of money changes what's valuable.",
+   options:[{key:"chase",label:"Chase the hype dip",sub:"story stocks got cheap",delta:-200,correct:false},
+     {key:"quality",label:"Move to cash-makers",sub:"own real profits",delta:150,correct:true},
+     {key:"freeze",label:"Freeze up",sub:"do nothing at all",delta:0,correct:false}]},
+  {name:"False Alarm", type:"event", verdict:"False Alarm",
+   pitch:"A solid business you like just dropped 25% in a day — because the WHOLE market fell on scary headlines. Nothing actually changed at the company itself.",
+   outcome:"A scary market doesn't change a healthy business. Selling with the crowd just locks in the loss. Strong companies recover.",
+   options:[{key:"sell",label:"Sell before it drops more",sub:"protect yourself",delta:-200,correct:false},
+     {key:"hold",label:"Hold — nothing changed",sub:"stay the course",delta:100,correct:true},
+     {key:"buy",label:"Buy more, cheaper",sub:"same business, lower price",delta:150,correct:true}]},
+  {name:"Recession", type:"event", verdict:"Recession",
+   pitch:"A downturn hits. People stop buying luxuries and gadgets — but they still buy food, soap, and electricity, just like always.",
+   outcome:"Some businesses barely notice hard times — people always need essentials. Know which of your holdings are recession-proof.",
+   options:[{key:"luxury",label:"Load up on luxuries",sub:"they fell the most",delta:-150,correct:false},
+     {key:"staples",label:"Own the essentials",sub:"food, power, basics",delta:150,correct:true},
+     {key:"cash",label:"Dump it all for cash",sub:"wait for the bottom",delta:-50,correct:false}]},
+];
+
+const STD_OPTIONS=[{key:"invest",label:"Invest",sub:"buy in"},{key:"pass",label:"Pass",sub:"sit out"},{key:"short",label:"Short",sub:"bet it falls"}];
+const SCEN=['bargain','bargain','fair','fair','full','rich','rich','bubble','bubble'];
+const FACTOR={bargain:0.72,fair:1.0,full:1.25,rich:1.6,bubble:2.3};
+
+let hand=[], idx=0, cash=1000, wisdom=0, sharp=0, call=null, cur=null, curReason=null;
+let fellForHype=0, missedReal=0, panicked=0, streak=0;
+const $=id=>document.getElementById(id);
+function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
+function pick(a){return a[Math.floor(Math.random()*a.length)]}
+function money(n){return (n<0?'-$':'$')+Math.abs(n).toLocaleString()}
+
+/* Price an instance of a business */
+function makeInstance(b){
+  const inst=Object.assign({},b);
+  inst.unit=b.unit||'share';
+  if(b.kind==='real'){
+    const scen=pick(SCEN); const f=FACTOR[scen];
+    inst.price=Math.max(1,Math.round(b.eps*b.fairPE*f));
+    inst.overpriced=f>1.35; inst.scen=scen; inst.hasEps=true;
+  } else if(b.kind==='declining'){
+    inst.price=Math.round(b.eps*pick([6,8,10,13]));
+    inst.overpriced=true; inst.hasEps=true;
+  } else { // hollow
+    if(b.fraud){ inst.price=Math.round(b.eps*pick([19,21,23])); inst.hasEps=true; }
+    else { inst.eps=0; inst.price=pick([40,70,95,130,180,240,300]); inst.hasEps=false; }
+    inst.overpriced=true;
+  }
+  inst.pe = inst.hasEps ? Math.round(inst.price/inst.eps) : null;
+  return inst;
+}
+
+function buildReasons(inst){
+  let correct, wrong;
+  if(inst.kind==='real' && !inst.overpriced){
+    correct="A solid business at a fair price for what it earns.";
+    wrong=["It's cheap, so something must be wrong with it.","Too boring to bother owning."];
+  } else if(inst.kind==='real' && inst.overpriced){
+    correct="A good business — but the price is far above what it earns.";
+    wrong=["It's a great company, so the price doesn't matter.","Everyone loves it, so any price is safe."];
+  } else if(inst.kind==='declining'){
+    correct=inst.right;
+    wrong=["A famous name at a low price is a bargain.","The dividend or price makes it safe."];
+  } else {
+    correct=inst.right;
+    wrong=["It's climbing, so I should get in.","A big name or story makes it safe."];
+  }
+  curReason=correct;
+  return shuffle([{t:correct,ok:true},{t:wrong[0],ok:false},{t:wrong[1],ok:false}]);
+}
+
+function correctCalls(inst){
+  if(inst.kind==='real' && !inst.overpriced) return ['invest'];
+  return ['pass','short'];
+}
+
+function startGame(){
+  const opps=shuffle(BUSINESSES).slice(0,12).map(makeInstance);
+  const evs=shuffle(EVENTS).slice(0,3);
+  hand=opps.slice();
+  hand.splice(4,0,evs[0]); hand.splice(9,0,evs[1]); hand.splice(14,0,evs[2]);
+  idx=0; cash=1000; wisdom=0; sharp=0; fellForHype=0; missedReal=0; panicked=0; streak=0; ac();
+  $('helper').innerHTML=HELP;
+  $('start').classList.add('hidden'); $('end').classList.add('hidden');
+  $('game').classList.remove('hidden');
+  buildPips(); render();
+}
+function buildPips(){const p=$('pips');p.innerHTML='';hand.forEach(c=>{const d=document.createElement('div');d.className='pip'+(c.type==='event'?' ev':'');p.appendChild(d)})}
+function updatePips(){[...$('pips').children].forEach((el,i)=>{const ev=hand[i].type==='event'?' ev':'';el.className='pip'+ev+(i<idx?' done':i===idx?' current':'')})}
+
+function render(){
+  call=null; cur=hand[idx];
+  const isEvent=cur.type==='event';
+  $('cash').textContent=money(cash); $('wisdom').textContent=wisdom; updatePips();
+  $('front').className='face front'+(isEvent?' event':'');
+  $('eyebrow').textContent=(isEvent?'Market Event':'Opportunity')+'  \u00B7  '+(idx+1)+' of '+hand.length;
+  $('cardname').textContent=cur.name;
+  $('pitch').textContent=isEvent?cur.pitch:cur.desc;
+  $('helper').style.display=isEvent?'none':'block';
+  $('fund').style.display=isEvent?'none':'block';
+  if(!isEvent){
+    $('eps').textContent = cur.hasEps ? ('$'+cur.eps.toFixed(2)+' / '+cur.unit) : 'none';
+    $('price').textContent = '$'+cur.price+' / '+cur.unit;
+    $('mult').textContent = cur.hasEps ? ('That\u2019s '+cur.pe+'\u00D7 its yearly earnings.') : 'No earnings to value it on.';
+  }
+  $('card').classList.remove('flipped');
+  $('prompt').textContent=isEvent?"The market just moved. What do you do?":"What's your call?";
+  $('reasons').classList.add('hidden'); $('next').classList.add('hidden');
+  const opts=isEvent?cur.options:STD_OPTIONS;
+  const box=$('actions'); box.innerHTML='';
+  opts.forEach(o=>{const b=document.createElement('button');
+    b.className='act '+(isEvent?'ev':'k-'+o.key);
+    b.innerHTML=o.label+'<span class="sub">'+o.sub+'</span>';
+    b.onclick=()=> isEvent?resolveEvent(o):chooseCall(o.key);
+    box.appendChild(b)});
+  box.classList.remove('hidden');
+}
+
+function chooseCall(key){
+  sndTick();
+  call=key; $('actions').classList.add('hidden');
+  $('prompt').textContent = key==='invest'?"You bought in. Why?":key==='short'?"You're betting it falls. Why?":"You're passing. Why?";
+  const box=$('reasons'); box.innerHTML='';
+  buildReasons(cur).forEach(r=>{const b=document.createElement('button');b.className='reason';b.textContent=r.t;b.onclick=()=>revealOpportunity(r.ok);box.appendChild(b)});
+  box.classList.remove('hidden');
+}
+
+function revealOpportunity(reasonOk){
+  $('reasons').classList.add('hidden'); $('prompt').textContent='';
+  const inst=cur;
+  const goodBuy=(inst.kind==='real' && !inst.overpriced);
+  const correct=correctCalls(inst).includes(call);
+
+  let d=0;
+  if(inst.kind==='real'){
+    if(call==='invest') d = inst.overpriced ? -300 : (inst.scen==='bargain'?400:250);
+    else if(call==='short') d = inst.overpriced ? 150 : -200;
+  } else if(inst.kind==='declining'){
+    if(call==='invest') d=-300; else if(call==='short') d=200;
+  } else {
+    if(call==='invest') d=-350; else if(call==='short') d=250;
+  }
+  cash+=d;
+
+  const chips=[];
+  if(correct){ sharp++; chips.push(['+1 sharp call','good']); } else chips.push(['no point','bad']);
+  const bonus=correct&&reasonOk; if(bonus) chips.push(['+1 right reason','brass']);
+  const avoidedBad = correct && !goodBuy;
+  if(avoidedBad){ wisdom++; chips.push(['+1 tulip dodged','brass']); }
+  if(d!==0) chips.push([(d>0?'+':'')+money(d), d>0?'good':'bad']);
+
+  if(!goodBuy && call==='invest') fellForHype++;
+  if(goodBuy && call!=='invest') missedReal++;
+
+  // valuation verdict
+  let vv;
+  if(inst.kind==='real'){
+    vv = inst.overpriced ? ('At '+inst.pe+'\u00D7 earnings, the price banks on years of flawless growth.')
+       : inst.scen==='bargain' ? ('At '+inst.pe+'\u00D7 earnings, a solid business below what it\u2019s worth.')
+       : ('At '+inst.pe+'\u00D7 earnings, a fair price for the quality.');
+  } else if(inst.kind==='declining'){
+    vv='It looked cheap at '+inst.pe+'\u00D7 — but its earnings are shrinking. The classic value trap.';
+  } else if(inst.fraud){
+    vv='At '+inst.pe+'\u00D7 it looked fairly priced — but the earnings were fabricated.';
+  } else {
+    vv='With no real earnings, there was nothing to value it on. The price was pure story.';
+  }
+  const fb = bonus ? '<span class="fb ok">\u2713 Right reason.</span>' : '<span class="fb">The read that mattered: \u201C'+curReason+'\u201D</span>';
+  $('revealReason').innerHTML='<b>'+vv+'</b>'+fb;
+
+  if(correct) streak++; else streak=0;
+  paintBack(inst.kind==='real'?'real':inst.kind==='declining'?'trap':'tulip', tag(inst), inst.note, chips, correct, d);
+}
+
+function tag(inst){
+  if(inst.kind==='real') return inst.overpriced?'Tulip Price':'Real';
+  if(inst.kind==='declining') return 'Value Trap';
+  return inst.fraud?'Fraud':'Tulip';
+}
+
+function resolveEvent(opt){
+  sndTick();
+  $('actions').classList.add('hidden'); $('prompt').textContent='';
+  cash+=opt.delta;
+  const chips=[];
+  if(opt.correct){ sharp++; wisdom++; chips.push(['+1 steady call','good'],['+1 composure','brass']); }
+  else { chips.push(['no point','bad']); panicked++; }
+  if(opt.delta!==0) chips.push([(opt.delta>0?'+':'')+money(opt.delta), opt.delta>0?'good':'bad']);
+  $('revealReason').innerHTML='';
+  if(opt.correct) streak++; else streak=0;
+  paintBack('event', cur.verdict, cur.outcome, chips, opt.correct, opt.delta);
+}
+
+function paintBack(type, verdict, outcome, chips, win, cashDelta){
+  cashDelta=cashDelta||0;
+  const back=$('back');
+  back.className='face back '+(type==='real'?'real':type==='tulip'?'tulip':type==='trap'?'trap':'event');
+  $('verdict').textContent=verdict; $('outcome').textContent=outcome;
+  const del=$('delta'); del.innerHTML='';
+  chips.forEach(([t,cls],i)=>{const s=document.createElement('span');s.className='chiplet '+cls+' slam';s.style.animationDelay=(0.2+i*0.09)+'s';s.textContent=t;del.appendChild(s)});
+  $('card').classList.add('flipped');
+  const prevCash=cash-cashDelta;
+  setTimeout(()=>{
+    feedback(!!win);
+    animateCount($('cash'), prevCash, cash, !!win);
+    $('wisdom').textContent=wisdom; popEl($('wisdom'));
+  },150);
+  $('next').textContent = idx===hand.length-1?'See results':'Next card';
+  $('next').classList.remove('hidden');
+}
+
+function nextCard(){ idx++; if(idx>=hand.length){ endGame(); return; } render(); }
+
+function endGame(){
+  $('game').classList.add('hidden'); $('end').classList.remove('hidden');
+  $('fCash').textContent=money(cash); $('fWis').textContent=wisdom; $('fSharp').textContent=sharp;
+  let cls,title,note;
+  if(fellForHype>=3){ cls='speculator'; title='The Speculator';
+    note="The price tag kept seducing you — whether it was pure hype or a good company at a crazy multiple. Before buying, ask: what does this earn, and am I overpaying?"; }
+  else if(missedReal>=3){ cls='cynic'; title='The Cynic';
+    note="You dodged the bubbles — but passed on genuinely good businesses trading at fair prices. A low, honest price on a real earner is exactly what you're hunting for."; }
+  else { cls='sharp'; title='The Sharp Eye';
+    note="You weighed price against value — buying good businesses cheap, refusing to overpay, and spotting the stories with nothing underneath. That's the whole game."; }
+  if(panicked>=2) note+=" And mind the panic button — the market shook you loose a few times when standing pat was smarter.";
+  const p=$('persona'); p.className='persona '+cls; p.textContent=title;
+  $('personaNote').textContent=note;
+}
+
+/* ---------- pizzazz: sound + effects ---------- */
+let AC=null, muted=false;
+function ac(){ try{ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); }catch(e){} return AC; }
+function toggleMute(){ muted=!muted; $('mute').textContent=muted?'\uD83D\uDD07':'\uD83D\uDD0A'; if(!muted) ac(); }
+function blip(freq,t0,dur,type,vol){ const c=ac(); if(!c||muted) return; const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0; o.type=type||'triangle'; o.frequency.setValueAtTime(freq,t); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.2,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.03); }
+function bend(f1,f2,t0,dur,type,vol){ const c=ac(); if(!c||muted) return; const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0; o.type=type||'sawtooth'; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(Math.max(20,f2),t+dur); g.gain.setValueAtTime(vol||0.18,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.03); }
+function sndWin(){ [523,659,784,1046].forEach((f,i)=>blip(f,i*0.07,0.22,'triangle',0.22)); blip(1568,0.28,0.25,'sine',0.13); }
+function sndStreak(){ [523,659,784,1046,1318,1568].forEach((f,i)=>blip(f,i*0.06,0.24,'square',0.15)); blip(2093,0.42,0.3,'sine',0.11); }
+function sndLose(){ bend(320,150,0,0.22,'square',0.2); bend(240,110,0.16,0.32,'square',0.18); }
+function sndTick(){ blip(700,0,0.04,'square',0.05); }
+
+function anim(el,cls){ el.classList.remove(cls); void el.offsetWidth; el.classList.add(cls); }
+function popEl(el){ anim(el,'bump'); }
+function flash(win){ const f=$('flash'); f.className='flash'; void f.offsetWidth; f.classList.add(win?'win':'lose'); }
+function showStreak(n){ const b=$('streakBanner'); b.textContent='\uD83D\uDD25 ON A ROLL! \u00D7'+n; anim(b,'show'); }
+function burst(win){
+  const fx=$('fx'), n=win?16:7;
+  for(let i=0;i<n;i++){
+    const p=document.createElement('div');
+    p.className='pcl '+(win?(Math.random()<0.72?'coin':'leaf'):'ash');
+    const ang=win?(-Math.PI/2+(Math.random()-0.5)*Math.PI*1.15):(Math.PI/2+(Math.random()-0.5)*0.9);
+    const dist=win?(70+Math.random()*120):(45+Math.random()*70);
+    const dx=Math.cos(ang)*dist, dy=Math.sin(ang)*dist+(win?0:26);
+    p.style.setProperty('--dx',dx.toFixed(0)+'px');
+    p.style.setProperty('--dy',dy.toFixed(0)+'px');
+    p.style.setProperty('--r',(Math.random()*540-270).toFixed(0)+'deg');
+    p.style.setProperty('--dur',(700+Math.random()*520).toFixed(0)+'ms');
+    fx.appendChild(p);
+    requestAnimationFrame(()=>p.classList.add('go'));
+    setTimeout(()=>p.remove(),1350);
+  }
+}
+function feedback(win){
+  flash(win);
+  if(win){ anim($('stage'),'pop'); burst(true); if(streak>=3){ sndStreak(); showStreak(streak); } else sndWin(); }
+  else { anim($('stage'),'shake'); burst(false); sndLose(); }
+}
+function animateCount(el,from,to,win){
+  const dur=650, t0=performance.now(), diff=to-from;
+  if(win && diff>0){ for(let i=0;i<5;i++) blip(1300,i*0.09,0.06,'square',0.08); }
+  function step(now){ let p=Math.min(1,(now-t0)/dur); p=1-Math.pow(1-p,3); el.textContent=money(Math.round(from+diff*p)); if(p<1) requestAnimationFrame(step); else el.textContent=money(to); }
+  requestAnimationFrame(step);
+}
+</script>
+</body>
+</html>
