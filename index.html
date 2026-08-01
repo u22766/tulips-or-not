@@ -218,6 +218,15 @@
   .sizebtn .amt{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--brass)}
   .chiplet.neutral{color:rgba(255,255,255,.82)}
 
+  .holdings{margin-bottom:12px}
+  .hold-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .hold-nw{font-family:'Space Mono',monospace;font-weight:700;font-size:13px;color:var(--parchment)}
+  .hold-hint{font-size:10px;color:rgba(241,231,206,.45)}
+  .hold-chips{display:flex;flex-wrap:wrap;gap:6px}
+  .hold-chip{font-family:'Space Mono',monospace;font-weight:700;font-size:11px;padding:5px 9px;border-radius:999px;border:1px solid;background:rgba(0,0,0,.2);cursor:pointer}
+  .hold-chip.up{color:#9ff0c0;border-color:rgba(159,240,192,.35)}
+  .hold-chip.down{color:#ff9a8f;border-color:rgba(255,154,143,.35)}
+
   @media (max-width:380px){h1{font-size:38px}.cardname{font-size:24px}.act{font-size:14px}}
   @media (prefers-reduced-motion:reduce){.card{transition:none}*{transition-duration:.01ms !important;animation:none !important}}
 </style>
@@ -260,6 +269,7 @@
       </div>
     </div>
 
+    <div class="holdings" id="holdings"></div>
     <div class="helper" id="helper"></div>
 
     <div class="stage" id="stage">
@@ -324,7 +334,7 @@
     <div class="persona" id="persona"></div>
     <p class="persona-note" id="personaNote"></p>
     <div class="scoreboard">
-      <div class="score-cell cash"><div class="n" id="fCash"></div><div class="k">Cash</div></div>
+      <div class="score-cell cash"><div class="n" id="fCash"></div><div class="k">Net Worth</div></div>
       <div class="score-cell wis"><div class="n" id="fWis"></div><div class="k">Tulip Score</div></div>
       <div class="score-cell sharp"><div class="n" id="fSharp"></div><div class="k">Sharp calls</div></div>
     </div>
@@ -474,7 +484,7 @@ const EVENTS = [
    outcome:"Crashes put great businesses on sale and expose the fragile. The ones who panic-sell lock in the loss; the prepared go shopping.",
    echo:"Real echo: 2008 and 2020 — the crashes that rewarded the calm.",
    options:[{key:"hold",label:"Hold steady",sub:"do nothing",delta:0,correct:true},
-     {key:"sell",label:"Sell it all",sub:"get out now",delta:-250,correct:false},
+     {key:"sell",label:"Sell it all",sub:"get out now",delta:-250,correct:false,liquidate:true},
      {key:"buy",label:"Buy the dip",sub:"quality on sale",delta:200,correct:true}]},
   {name:"Rates Jump", type:"event", verdict:"Rates Jump",
    pitch:"Interest rates spike. Money is no longer 'free.' Speculative, no-profit story stocks get hit hardest — steady cash-generators hold up far better.",
@@ -487,7 +497,7 @@ const EVENTS = [
    pitch:"A solid business you like just dropped 25% in a day — because the WHOLE market fell on scary headlines. Nothing actually changed at the company itself.",
    outcome:"A scary market doesn't change a healthy business. Selling with the crowd just locks in the loss. Strong companies recover.",
    echo:"Real echo: the countless one-day scares that healthy businesses simply shrugged off.",
-   options:[{key:"sell",label:"Sell before it drops more",sub:"protect yourself",delta:-200,correct:false},
+   options:[{key:"sell",label:"Sell before it drops more",sub:"protect yourself",delta:-200,correct:false,liquidate:true},
      {key:"hold",label:"Hold — nothing changed",sub:"stay the course",delta:100,correct:true},
      {key:"buy",label:"Buy more, cheaper",sub:"same business, lower price",delta:150,correct:true}]},
   {name:"Recession", type:"event", verdict:"Recession",
@@ -496,7 +506,7 @@ const EVENTS = [
    echo:"Real echo: downturns where staples held their ground while luxuries sank.",
    options:[{key:"luxury",label:"Load up on luxuries",sub:"they fell the most",delta:-150,correct:false},
      {key:"staples",label:"Own the essentials",sub:"food, power, basics",delta:150,correct:true},
-     {key:"cash",label:"Dump it all for cash",sub:"wait for the bottom",delta:-50,correct:false}]},
+     {key:"cash",label:"Dump it all for cash",sub:"wait for the bottom",delta:-50,correct:false,liquidate:true}]},
 ];
 
 const STD_OPTIONS=[{key:"invest",label:"Invest",sub:"buy in"},{key:"pass",label:"Pass",sub:"sit out"},{key:"short",label:"Short",sub:"bet it falls"}];
@@ -517,7 +527,7 @@ const DIFF_NOTE={
   hard:'2 scouts \u00B7 longer deck \u00B7 impostor cards that lie.',
   expert:'1 scout \u00B7 toughest prices \u00B7 most impostors.'
 };
-function autoDiff(level){ return level<=0?'easy':level<=2?'normal':level<=4?'hard':'expert'; }
+function autoDiff(level){ return level<=1?'normal':level<=3?'hard':'expert'; }
 function loadProfile(){ try{ const s=localStorage.getItem('tulips_profile'); if(s) return JSON.parse(s); }catch(e){} return {xp:0,sessions:0,bestStreak:0}; }
 function saveProfile(p){ try{ localStorage.setItem('tulips_profile',JSON.stringify(p)); }catch(e){} }
 let profile=loadProfile();
@@ -543,6 +553,7 @@ let hand=[], idx=0, cash=1000, wisdom=0, sharp=0, call=null, cur=null, curReason
 let fellForHype=0, missedReal=0, panicked=0, streak=0;
 let scoutsLeft=2, scouted={};
 let committed=0, sizeLabel='';
+let holdings=[];
 const $=id=>document.getElementById(id);
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
@@ -667,6 +678,21 @@ function tradeReturn(inst, call, squeezed){
   return 0;
 }
 
+/* ---- Portfolio: holdings persist, cost cash, and get shocked by events ---- */
+const EVENT_SHOCK={"Market Storm":-0.22,"Rates Jump":-0.12,"False Alarm":-0.10,"Recession":-0.12};
+function markOf(p){ return Math.max(0, Math.round(p.stake*(1+p.ret+p.shock))); }
+function netWorth(){ return cash + holdings.reduce((a,p)=>a+markOf(p),0); }
+function sellAll(){ holdings.forEach(p=>{ cash+=markOf(p); }); holdings=[]; }
+function sellHolding(i){ if(!holdings[i]) return; sndTick(); cash+=markOf(holdings[i]); holdings.splice(i,1); $('cash').textContent=money(cash); renderHoldings(); }
+function shortName(n){ return n.split(' ')[0].slice(0,10); }
+function renderHoldings(){
+  const h=$('holdings'); if(!h) return;
+  const nw=netWorth();
+  if(holdings.length===0){ h.innerHTML='<div class="hold-head"><span class="hold-nw">Net worth $'+nw.toLocaleString()+'</span><span class="hold-hint">all in cash</span></div>'; return; }
+  const chips=holdings.map((p,i)=>{ const m=markOf(p), up=m>=p.stake; return '<button class="hold-chip '+(up?'up':'down')+'" onclick="sellHolding('+i+')">'+(p.dir==='short'?'\u2193 ':'')+shortName(p.name)+' $'+m.toLocaleString()+' '+(up?'\u25B2':'\u25BC')+'</button>'; }).join('');
+  h.innerHTML='<div class="hold-head"><span class="hold-nw">Net worth $'+nw.toLocaleString()+'</span><span class="hold-hint">tap a holding to sell</span></div><div class="hold-chips">'+chips+'</div>';
+}
+
 function startGame(){
   const d=currentDiff(); curDiff=d; scoutBudget=d.scouts;
   const oppCount=d.len-d.events;
@@ -682,7 +708,7 @@ function startGame(){
   hand=[]; let ei=0; const chunk=oppCount/(d.events+1);
   for(let i=0;i<opps.length;i++){ hand.push(opps[i]); if(ei<evs.length && (i+1)>=Math.round((ei+1)*chunk)){ hand.push(evs[ei]); ei++; } }
   while(ei<evs.length) hand.push(evs[ei++]);
-  idx=0; cash=1000; wisdom=0; sharp=0; fellForHype=0; missedReal=0; panicked=0; streak=0; maxStreak=0; ac();
+  idx=0; cash=1000; wisdom=0; sharp=0; fellForHype=0; missedReal=0; panicked=0; streak=0; maxStreak=0; holdings=[]; ac();
   $('helper').innerHTML=HELP;
   $('start').classList.add('hidden'); $('end').classList.add('hidden');
   $('game').classList.remove('hidden');
@@ -694,7 +720,7 @@ function updatePips(){[...$('pips').children].forEach((el,i)=>{const ev=hand[i].
 function render(){
   call=null; cur=hand[idx];
   const isEvent=cur.type==='event';
-  $('cash').textContent=money(cash); $('wisdom').textContent=wisdom; updatePips();
+  $('cash').textContent=money(cash); $('wisdom').textContent=wisdom; updatePips(); renderHoldings();
   $('front').className='face front'+(isEvent?' event':'');
   $('eyebrow').textContent=(isEvent?'Market Event':'Opportunity')+'  \u00B7  '+(idx+1)+' of '+hand.length;
   $('cardname').textContent=cur.name;
@@ -778,16 +804,24 @@ function revealOpportunity(reasonOk){
   if(squeezed) correct=false;
 
   const ret=tradeReturn(inst, call, squeezed);
-  let d=Math.round(committed*ret);
-  cash+=d;
+  let mark=0, d=0;
+  if(committed>0){
+    cash-=committed; d=-committed;
+    mark=Math.max(0,Math.round(committed*(1+ret)));
+    holdings.push({name:inst.name, dir:call==='invest'?'long':'short', stake:committed, ret:ret, shock:0});
+    renderHoldings();
+  }
 
   const chips=[];
   if(correct){ sharp++; chips.push(['+1 sharp call','good']); } else chips.push(['no point','bad']);
   const bonus=correct&&reasonOk; if(bonus) chips.push(['+1 right reason','brass']);
   const avoidedBad = correct && !goodBuy;
   if(avoidedBad){ wisdom++; chips.push(['+1 tulip dodged','brass']); }
-  if(committed>0) chips.push([sizeLabel+' \u00B7 $'+committed.toLocaleString(),'neutral']);
-  if(d!==0) chips.push([(d>0?'+':'')+money(d), d>0?'good':'bad']);
+  if(committed>0){
+    chips.push([sizeLabel+' \u00B7 opened $'+committed.toLocaleString(),'neutral']);
+    const up=mark>=committed;
+    chips.push(['now worth $'+mark.toLocaleString()+' '+(up?'\u25B2':'\u25BC'), up?'good':'bad']);
+  }
 
   if(!goodBuy && call==='invest') fellForHype++;
   if(goodBuy && call!=='invest') missedReal++;
@@ -827,16 +861,23 @@ function tag(inst){
 function resolveEvent(opt){
   sndTick();
   $('actions').classList.add('hidden'); $('prompt').textContent='';
-  cash+=opt.delta;
+  const cashBefore=cash, nwBefore=netWorth();
+  const full=EVENT_SHOCK[cur.name]||0;
+  const eff=opt.liquidate ? full : full*0.5;   // ride it out = half the hit; panic = full hit
+  holdings.forEach(p=>{ p.shock += (p.dir==='long'? eff : -eff*0.7); });
+  if(opt.liquidate) sellAll();
+  const dNW=netWorth()-nwBefore, cashDelta=cash-cashBefore;
   const chips=[];
   if(opt.correct){ sharp++; wisdom++; chips.push(['+1 steady call','good'],['+1 composure','brass']); }
   else { chips.push(['no point','bad']); panicked++; }
-  if(opt.delta!==0) chips.push([(opt.delta>0?'+':'')+money(opt.delta), opt.delta>0?'good':'bad']);
+  if(holdings.length===0 && dNW===0 && !opt.liquidate) chips.push(['safe in cash','good']);
+  if(dNW!==0) chips.push([(dNW>0?'+':'')+money(dNW)+' net', dNW>0?'good':'bad']);
   $('revealReason').innerHTML='';
   setEcho(cur.echo);
   if(opt.correct) streak++; else streak=0;
   if(streak>maxStreak) maxStreak=streak;
-  paintBack('event', cur.verdict, cur.outcome, chips, opt.correct, opt.delta);
+  renderHoldings();
+  paintBack('event', cur.verdict, cur.outcome, chips, opt.correct, cashDelta);
 }
 
 function paintBack(type, verdict, outcome, chips, win, cashDelta){
@@ -860,6 +901,7 @@ function paintBack(type, verdict, outcome, chips, win, cashDelta){
 function nextCard(){ idx++; if(idx>=hand.length){ endGame(); return; } render(); }
 
 function endGame(){
+  sellAll();
   $('game').classList.add('hidden'); $('end').classList.remove('hidden');
   $('fCash').textContent=money(cash); $('fWis').textContent=wisdom; $('fSharp').textContent=sharp;
   let cls,title,note;
