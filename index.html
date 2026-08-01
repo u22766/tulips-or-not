@@ -183,10 +183,10 @@
   .streak-banner.hot{background:linear-gradient(90deg,#ff5e3a,#ffcf4d)}
 
   .fundamentals{margin-top:16px;padding-top:13px;border-top:1px dashed rgba(42,32,24,.28)}
-  .reports{display:flex;flex-direction:column;gap:7px;margin-top:9px}
-  .report{font-size:13px;line-height:1.4;color:#4a3c2c;padding:8px 11px;background:rgba(42,32,24,.06);border-radius:9px;border-left:3px solid #b8912e;animation:slam .3s ease}
-  .report.warn{border-left-color:var(--tulip);color:#7a2a22;background:rgba(192,57,43,.08)}
-  .report .rk{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;display:block;margin-bottom:2px}
+  .reports{display:flex;flex-direction:column;gap:7px;margin-bottom:10px}
+  .report{font-size:13px;line-height:1.4;color:var(--parchment);padding:9px 12px;background:rgba(241,231,206,.08);border-radius:10px;border-left:3px solid var(--brass);animation:slam .3s ease}
+  .report.warn{border-left-color:var(--tulip);color:#ffd7d1;background:rgba(192,57,43,.16)}
+  .report .rk{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:rgba(241,231,206,.55);font-weight:700;display:block;margin-bottom:2px}
   .scout{margin-bottom:8px;background:rgba(0,0,0,.16);border:1px solid rgba(241,231,206,.1);border-radius:12px;padding:8px 12px}
   .scout-label{font-size:12px;color:rgba(241,231,206,.72);font-weight:600;display:block;margin-bottom:8px}
   .scout-label b{color:var(--brass)}
@@ -325,7 +325,6 @@
           <div class="pitch" id="pitch"></div>
           <div class="fundamentals" id="fund">
             <div class="fund-row"><span class="fk">Price</span><span class="fv" id="price"></span></div>
-            <div class="reports" id="reports"></div>
           </div>
         </div>
         <div class="face back" id="back">
@@ -354,6 +353,8 @@
       <div class="flash" id="flash"></div>
       <div class="streak-banner" id="streakBanner"></div>
     </div>
+
+    <div class="reports" id="reports"></div>
 
     <div class="scout" id="scoutRow">
       <span class="scout-label">🔍 Scout the business — <b id="scoutsLeft">2</b> looks left</span>
@@ -931,7 +932,7 @@ const LEVELS=[
 function beginSession(cfg){
   F=cfg.flags; scoutBudget=cfg.scouts;
   const oppCount=cfg.len-cfg.events;
-  let base=BUSINESSES.filter(b=>!b.hard && (!cfg.kinds || cfg.kinds.includes(b.kind)));
+  let base=BUSINESSES.filter(b=>!b.hard && (!cfg.kinds || cfg.kinds.includes(b.kind)) && !(b.fraud && !cfg.flags.scout));
   let pool=shuffle(base).slice(0,oppCount);
   if(cfg.impostors){
     const imps=shuffle(BUSINESSES.filter(b=>b.hard));
