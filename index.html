@@ -227,6 +227,30 @@
   .hold-chip.up{color:#9ff0c0;border-color:rgba(159,240,192,.35)}
   .hold-chip.down{color:#ff9a8f;border-color:rgba(255,154,143,.35)}
 
+  .start-btn.secondary{background:rgba(241,231,206,.1);color:var(--parchment);border:1px solid rgba(241,231,206,.25);margin-top:10px}
+  .start-btn.secondary:hover{background:rgba(241,231,206,.16)}
+  .camp-h1{font-family:'Fraunces',serif;font-weight:900;font-size:30px;line-height:1;letter-spacing:-.01em;margin-bottom:10px}
+  .level-list{display:flex;flex-direction:column;gap:9px;margin:18px 0 20px;text-align:left}
+  .level-row{display:grid;grid-template-columns:auto 1fr;grid-template-areas:'num name' 'num goal';column-gap:12px;align-items:center;
+    padding:12px 14px;border-radius:12px;background:rgba(241,231,206,.06);border:1px solid rgba(241,231,206,.16);color:var(--parchment);text-align:left}
+  .level-row .lv-num{grid-area:num;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-family:'Space Mono',monospace;font-weight:700;font-size:14px;background:rgba(241,231,206,.1)}
+  .level-row .lv-name{grid-area:name;font-weight:600;font-size:15px}
+  .level-row .lv-goal{grid-area:goal;font-size:11px;color:rgba(241,231,206,.55);margin-top:1px}
+  .level-row.done{border-color:rgba(212,175,55,.4)}
+  .level-row.done .lv-num{background:var(--brass);color:#2a2008}
+  .level-row.open{border-color:rgba(241,231,206,.4)}
+  .level-row.open .lv-num{background:var(--parchment);color:#2a2008}
+  .level-row.locked{opacity:.45}
+  .level-row.open:hover{background:rgba(241,231,206,.13);transform:translateY(-1px)}
+  .li-goal{font-size:15px;color:rgba(241,231,206,.85);margin:6px 0 22px;padding:12px;border-radius:12px;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.3)}
+  .li-goal b{color:var(--brass)}
+  .level-result{margin-bottom:14px}
+  .lr-badge{font-family:'Fraunces',serif;font-weight:900;font-size:24px;margin-bottom:4px}
+  .lr-badge.win{color:var(--brass)}
+  .lr-badge.lose{color:var(--tulip)}
+  .lr-goal{font-size:13px;color:rgba(241,231,206,.6)}
+
   @media (max-width:380px){h1{font-size:38px}.cardname{font-size:24px}.act{font-size:14px}}
   @media (prefers-reduced-motion:reduce){.card{transition:none}*{transition-duration:.01ms !important;animation:none !important}}
 </style>
@@ -255,8 +279,26 @@
       <div class="how-row"><span class="how-n">2</span><span>Call it: Invest, Pass, or Short — then say why.</span></div>
       <div class="how-row"><span class="how-n">3</span><span>Score for the right call, a bonus for the right reason.</span></div>
     </div>
-    <button class="start-btn" onclick="startGame()">Deal the deck</button>
+    <button class="start-btn" onclick="showCampaignMap()">Campaign</button>
+    <button class="start-btn secondary" onclick="startGame()">Free Play</button>
     <p class="foot">Prototype · tap 🔊 for sound · your feedback shapes it</p>
+  </section>
+
+  <section id="campaign" class="panel hidden">
+    <div class="flower-hero">Campaign</div>
+    <h1 class="camp-h1">Learn the game</h1>
+    <p class="lede small">Clear each level to unlock the next. One new idea at a time.</p>
+    <div class="level-list" id="levelList"></div>
+    <button class="start-btn secondary" onclick="backToStart()">Back</button>
+  </section>
+
+  <section id="levelIntro" class="panel hidden">
+    <div class="flower-hero" id="liNum"></div>
+    <h1 class="camp-h1" id="liTitle"></h1>
+    <p class="lede" id="liTeach"></p>
+    <div class="li-goal" id="liGoal"></div>
+    <button class="start-btn" id="liStart">Start level</button>
+    <button class="start-btn secondary" onclick="showCampaignMap()">Back</button>
   </section>
 
   <section id="game" class="hidden">
@@ -338,9 +380,10 @@
       <div class="score-cell wis"><div class="n" id="fWis"></div><div class="k">Tulip Score</div></div>
       <div class="score-cell sharp"><div class="n" id="fSharp"></div><div class="k">Sharp calls</div></div>
     </div>
+    <div class="level-result hidden" id="levelResult"></div>
     <div class="xp-earned" id="xpEarned"></div>
     <div class="rankbar" id="rankbarEnd"></div>
-    <button class="start-btn" onclick="startGame()">Play again</button>
+    <div id="endActions"><button class="start-btn" onclick="startGame()">Play again</button></div>
   </section>
 
 </div>
@@ -554,6 +597,8 @@ let fellForHype=0, missedReal=0, panicked=0, streak=0;
 let scoutsLeft=2, scouted={};
 let committed=0, sizeLabel='';
 let holdings=[];
+const ALL_ON={scout:true,sizing:true,holdings:true,compounding:true,events:true,impostors:true};
+let F=Object.assign({},ALL_ON), campaign=null;
 const $=id=>document.getElementById(id);
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
@@ -700,26 +745,103 @@ function renderHoldings(){
   h.innerHTML='<div class="hold-head"><span class="hold-nw">Net worth $'+nw.toLocaleString()+'</span><span class="hold-hint">tap a holding to sell</span></div><div class="hold-chips">'+chips+'</div>';
 }
 
-function startGame(){
-  const d=currentDiff(); curDiff=d; scoutBudget=d.scouts;
-  const oppCount=d.len-d.events;
-  let pool=shuffle(BUSINESSES.filter(b=>!b.hard)).slice(0,oppCount);
-  if(d.twist>0){
+const LEVELS=[
+  {t:"Tulips or Not", teach:"The basics: some businesses are real, some are pure hype. Buy the real ones, pass the tulips.",
+   flags:{scout:false,sizing:false,holdings:false,compounding:false,events:false,impostors:false},
+   kinds:['real','hollow'], len:8, borderline:false,
+   goal:{label:"Dodge 3 tulips", check:s=>s.wisdom>=3}},
+  {t:"Look Before You Leap", teach:"Now the card hides the truth behind a buzz line. Scout to uncover its earnings, outlook, and books before you decide.",
+   flags:{scout:true,sizing:false,holdings:false,compounding:false,events:false,impostors:false},
+   kinds:['real','hollow','declining'], len:9, borderline:false,
+   goal:{label:"Make 6 sharp calls", check:s=>s.sharp>=6}},
+  {t:"Price Is Everything", teach:"A great business at a crazy price is still a trap. Weigh the price against what it earns — a bargain at one price is a bubble at another.",
+   flags:{scout:true,sizing:false,holdings:false,compounding:false,events:false,impostors:false},
+   kinds:['real','hollow','declining'], len:10, borderline:true,
+   goal:{label:"Make 7 sharp calls", check:s=>s.sharp>=7}},
+  {t:"Size Your Bets", teach:"Now you choose how much to commit. Bet big on high-conviction bargains; keep it small when you're unsure.",
+   flags:{scout:true,sizing:true,holdings:false,compounding:false,events:false,impostors:false},
+   kinds:['real','hollow','declining'], len:10, borderline:true,
+   goal:{label:"Finish with $1,500+", check:s=>s.net>=1500}},
+  {t:"Build a Portfolio", teach:"Your buys become holdings that tie up cash — you can't buy everything. Spread your bets, and hold your winners so they compound.",
+   flags:{scout:true,sizing:true,holdings:true,compounding:true,events:false,impostors:false},
+   kinds:['real','hollow','declining'], len:12, borderline:true,
+   goal:{label:"Finish with $1,350+", check:s=>s.net>=1350}},
+  {t:"Weather the Storm", teach:"Markets crash. A storm hits everything you own — hold quality through the fear, because panic-selling locks in the loss.",
+   flags:{scout:true,sizing:true,holdings:true,compounding:true,events:true,impostors:false},
+   kinds:['real','hollow','declining'], len:14, borderline:true,
+   goal:{label:"Survive with $1,250+", check:s=>s.net>=1250}},
+  {t:"The Long Game", teach:"Hold winners and let them compound; cut tulips fast. Everything's in play now — including impostor cards whose surface lies.",
+   flags:{scout:true,sizing:true,holdings:true,compounding:true,events:true,impostors:true},
+   kinds:['real','hollow','declining'], len:16, borderline:true,
+   goal:{label:"Finish with $1,400+", check:s=>s.net>=1400}},
+];
+
+function beginSession(cfg){
+  F=cfg.flags; scoutBudget=cfg.scouts;
+  const oppCount=cfg.len-cfg.events;
+  let base=BUSINESSES.filter(b=>!b.hard && (!cfg.kinds || cfg.kinds.includes(b.kind)));
+  let pool=shuffle(base).slice(0,oppCount);
+  if(cfg.impostors){
     const imps=shuffle(BUSINESSES.filter(b=>b.hard));
-    const nSwap=Math.min(imps.length, Math.max(1,Math.round(oppCount*d.twist)));
+    const nSwap=Math.min(imps.length, Math.max(1,Math.round(oppCount*(cfg.twist||0.25))));
     for(let i=0;i<nSwap && i<pool.length;i++) pool[i]=imps[i];
     pool=shuffle(pool);
   }
-  const opps=pool.map(b=>makeInstance(b,d.borderline));
-  const evs=shuffle(EVENTS).slice(0,d.events);
-  hand=[]; let ei=0; const chunk=oppCount/(d.events+1);
+  const opps=pool.map(b=>makeInstance(b,cfg.borderline));
+  const evs=cfg.events>0 ? shuffle(EVENTS).slice(0,cfg.events) : [];
+  hand=[]; let ei=0; const chunk=oppCount/((cfg.events||0)+1);
   for(let i=0;i<opps.length;i++){ hand.push(opps[i]); if(ei<evs.length && (i+1)>=Math.round((ei+1)*chunk)){ hand.push(evs[ei]); ei++; } }
   while(ei<evs.length) hand.push(evs[ei++]);
   idx=0; cash=1000; wisdom=0; sharp=0; fellForHype=0; missedReal=0; panicked=0; streak=0; maxStreak=0; holdings=[]; ac();
-  $('helper').innerHTML=HELP;
-  $('start').classList.add('hidden'); $('end').classList.add('hidden');
+  $('helper').innerHTML=HELP; $('helper').style.display=F.scout?'block':'none';
+  ['start','end','campaign','levelIntro'].forEach(id=>$(id).classList.add('hidden'));
   $('game').classList.remove('hidden');
   buildPips(); render();
+}
+
+function startGame(){  // Free Play
+  campaign=null;
+  const d=currentDiff();
+  beginSession({flags:Object.assign({},ALL_ON), scouts:d.scouts, len:d.len, events:d.events, twist:d.twist, borderline:d.borderline, kinds:null, impostors:d.twist>0});
+}
+function startLevel(i){
+  campaign=i; const L=LEVELS[i];
+  const evCount=L.flags.events?Math.max(2,Math.round(L.len*0.2)):0;
+  beginSession({flags:Object.assign({},L.flags), scouts:L.flags.scout?2:3, len:L.len, events:evCount, twist:0.25, borderline:L.borderline, kinds:L.kinds, impostors:L.flags.impostors});
+}
+function clearedLevel(){ return (profile.campaignCleared==null)?-1:profile.campaignCleared; }
+function backToStart(){ ['campaign','game','end','levelIntro'].forEach(id=>$(id).classList.add('hidden')); $('start').classList.remove('hidden'); renderRankbar('rankbar'); }
+function showCampaignMap(){
+  ['start','game','end','levelIntro'].forEach(id=>$(id).classList.add('hidden'));
+  $('campaign').classList.remove('hidden');
+  const cleared=clearedLevel(), list=$('levelList'); list.innerHTML='';
+  LEVELS.forEach((L,i)=>{
+    const unlocked=i<=cleared+1, done=i<=cleared;
+    const row=document.createElement('button');
+    row.className='level-row '+(done?'done':unlocked?'open':'locked'); row.disabled=!unlocked;
+    row.innerHTML='<span class="lv-num">'+(done?'\u2714':unlocked?(i+1):'\uD83D\uDD12')+'</span><span class="lv-name">'+L.t+'</span><span class="lv-goal">'+L.goal.label+'</span>';
+    if(unlocked) row.onclick=()=>showLevelIntro(i);
+    list.appendChild(row);
+  });
+}
+function showLevelIntro(i){
+  ['start','game','end','campaign'].forEach(id=>$(id).classList.add('hidden'));
+  $('levelIntro').classList.remove('hidden');
+  const L=LEVELS[i];
+  $('liNum').textContent='Level '+(i+1)+' of '+LEVELS.length;
+  $('liTitle').textContent=L.t; $('liTeach').textContent=L.teach;
+  $('liGoal').innerHTML='\uD83C\uDFAF Goal: <b>'+L.goal.label+'</b>';
+  $('liStart').onclick=()=>startLevel(i);
+}
+function showLevelResult(i, won){
+  const L=LEVELS[i], hasNext=i+1<LEVELS.length, lr=$('levelResult');
+  lr.classList.remove('hidden');
+  lr.innerHTML='<div class="lr-badge '+(won?'win':'lose')+'">'+(won?'\u2714 Level Cleared':'\u2717 Goal Missed')+'</div><div class="lr-goal">'+L.goal.label+'</div>';
+  let btns='';
+  if(won && hasNext) btns+='<button class="start-btn" onclick="startLevel('+(i+1)+')">Next level \u2192</button>';
+  else if(!won) btns+='<button class="start-btn" onclick="startLevel('+i+')">Retry level</button>';
+  btns+='<button class="start-btn secondary" onclick="showCampaignMap()">'+(won&&!hasNext?'\u2605 Campaign complete':'Campaign map')+'</button>';
+  $('endActions').innerHTML=btns;
 }
 function buildPips(){const p=$('pips');p.innerHTML='';hand.forEach(c=>{const d=document.createElement('div');d.className='pip'+(c.type==='event'?' ev':'');p.appendChild(d)})}
 function updatePips(){[...$('pips').children].forEach((el,i)=>{const ev=hand[i].type==='event'?' ev':'';el.className='pip'+ev+(i<idx?' done':i===idx?' current':'')})}
@@ -731,15 +853,19 @@ function render(){
   $('front').className='face front'+(isEvent?' event':'');
   $('eyebrow').textContent=(isEvent?'Market Event':'Opportunity')+'  \u00B7  '+(idx+1)+' of '+hand.length;
   $('cardname').textContent=cur.name;
-  $('pitch').textContent=isEvent?cur.pitch:(SURFACE[cur.name]||cur.desc);
-  $('helper').style.display=isEvent?'none':'block';
+  $('pitch').textContent=isEvent?cur.pitch:(F.scout?(SURFACE[cur.name]||cur.desc):cur.desc);
+  $('helper').style.display=(isEvent||!F.scout)?'none':'block';
   $('fund').style.display=isEvent?'none':'block';
-  $('scoutRow').style.display=isEvent?'none':'block';
+  $('scoutRow').style.display=(isEvent||!F.scout)?'none':'block';
   if(!isEvent){
     $('price').textContent='$'+cur.price+' / '+cur.unit;
     $('reports').innerHTML='';
-    scoutsLeft=scoutBudget; scouted={}; $('scoutsLeft').textContent=scoutsLeft;
-    ['earn','moat','books'].forEach(r=>{const b=$('sc-'+r); b.disabled=false; b.classList.remove('used');});
+    if(F.scout){
+      scoutsLeft=scoutBudget; scouted={}; $('scoutsLeft').textContent=scoutsLeft;
+      ['earn','moat','books'].forEach(r=>{const b=$('sc-'+r); b.disabled=false; b.classList.remove('used');});
+    } else {
+      addReport('earn'); addReport('moat');
+    }
   }
   $('card').classList.remove('flipped');
   $('prompt').textContent=isEvent?"The market just moved. What do you do?":"Scout what matters — then make your call.";
@@ -759,6 +885,7 @@ function chooseCall(key){
   sndTick(); call=key;
   $('actions').classList.add('hidden'); $('scoutRow').style.display='none';
   if(key==='pass'){ committed=0; sizeLabel=''; goToReason(); return; }
+  if(!F.sizing){ committed=Math.max(10,Math.round(cash*0.35/10)*10); sizeLabel=''; goToReason(); return; }
   const amt=f=>Math.max(10,Math.round(cash*f/10)*10);
   $('amt-s').textContent='$'+amt(0.15).toLocaleString();
   $('amt-m').textContent='$'+amt(0.35).toLocaleString();
@@ -783,11 +910,7 @@ function goToReason(){
   box.classList.remove('hidden');
 }
 
-function scout(r){
-  if(scoutsLeft<=0 || scouted[r]) return;
-  scouted[r]=true; scoutsLeft--; sndTick();
-  $('scoutsLeft').textContent=scoutsLeft;
-  const b=$('sc-'+r); b.disabled=true; b.classList.add('used');
+function addReport(r){
   let label,text,warn=false;
   if(r==='earn'){ label='Earnings'; text=rptEarnings(cur); warn=!cur.hasEps; }
   else if(r==='moat'){ label='Outlook'; text=rptMoat(cur); warn=(cur.kind==='declining'); }
@@ -796,6 +919,13 @@ function scout(r){
   div.className='report'+(warn?' warn':'');
   div.innerHTML='<span class="rk">'+label+'</span>'+text;
   $('reports').appendChild(div);
+}
+function scout(r){
+  if(scoutsLeft<=0 || scouted[r]) return;
+  scouted[r]=true; scoutsLeft--; sndTick();
+  $('scoutsLeft').textContent=scoutsLeft;
+  const b=$('sc-'+r); b.disabled=true; b.classList.add('used');
+  addReport(r);
   if(scoutsLeft<=0) ['earn','moat','books'].forEach(k=>{ if(!scouted[k]) $('sc-'+k).disabled=true; });
 }
 
@@ -813,11 +943,15 @@ function revealOpportunity(reasonOk){
   const pp=positionParams(inst, call, squeezed);
   let mark=0, d=0;
   if(committed>0){
-    cash-=committed; d=-committed;
-    const entry=Math.max(0,Math.round(committed*(1+pp.im)));
-    holdings.push({name:inst.name, dir:call==='invest'?'long':'short', stake:committed, entry:entry, g:pp.g, turns:0, shock:0});
-    mark=entry;
-    renderHoldings();
+    if(F.holdings){
+      cash-=committed; d=-committed;
+      const entry=Math.max(0,Math.round(committed*(1+pp.im)));
+      holdings.push({name:inst.name, dir:call==='invest'?'long':'short', stake:committed, entry:entry, g:F.compounding?pp.g:0, turns:0, shock:0});
+      mark=entry; renderHoldings();
+    } else {
+      const ret=pp.im + pp.g*5;
+      d=Math.round(committed*ret); cash+=d; mark=committed+d;
+    }
   }
 
   const chips=[];
@@ -826,9 +960,14 @@ function revealOpportunity(reasonOk){
   const avoidedBad = correct && !goodBuy;
   if(avoidedBad){ wisdom++; chips.push(['+1 tulip dodged','brass']); }
   if(committed>0){
-    chips.push([sizeLabel+' \u00B7 opened $'+committed.toLocaleString(),'neutral']);
-    const up=mark>=committed;
-    chips.push(['now worth $'+mark.toLocaleString()+' '+(up?'\u25B2':'\u25BC'), up?'good':'bad']);
+    if(F.holdings){
+      chips.push([(sizeLabel?sizeLabel+' \u00B7 ':'')+'opened $'+committed.toLocaleString(),'neutral']);
+      const up=mark>=committed;
+      chips.push(['now worth $'+mark.toLocaleString()+' '+(up?'\u25B2':'\u25BC'), up?'good':'bad']);
+    } else {
+      if(sizeLabel) chips.push([sizeLabel+' \u00B7 $'+committed.toLocaleString(),'neutral']);
+      if(d!==0) chips.push([(d>0?'+':'')+money(d), d>0?'good':'bad']);
+    }
   }
 
   if(!goodBuy && call==='invest') fellForHype++;
@@ -931,7 +1070,16 @@ function endGame(){
   saveProfile(profile);
   $('xpEarned').innerHTML='+'+gained+' XP'+(ranked?' <span class="rankup">RANK UP \u2192 '+RANKS[afterRank].n+'!</span>':'');
   renderRankbar('rankbarEnd');
-  if(cls==='sharp'||ranked){ confetti(70); sndStreak(3); }
+  let won=false;
+  if(campaign!==null){
+    won=LEVELS[campaign].goal.check({net:cash,wisdom,sharp,maxStreak});
+    if(won && campaign>clearedLevel()){ profile.campaignCleared=campaign; saveProfile(profile); }
+    showLevelResult(campaign, won);
+  } else {
+    $('levelResult').classList.add('hidden');
+    $('endActions').innerHTML='<button class="start-btn" onclick="startGame()">Play again</button>';
+  }
+  if(cls==='sharp'||ranked||won){ confetti(70); sndStreak(3); }
 }
 
 /* ---------- pizzazz: sound + effects ---------- */
