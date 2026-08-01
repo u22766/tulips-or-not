@@ -961,7 +961,7 @@ function revealOpportunity(reasonOk){
   }
 
   const chips=[];
-  if(correct){ sharp++; chips.push(['+1 sharp call','good']); } else chips.push(['no point','bad']);
+  if(correct){ sharp++; chips.push(['+1 sharp call','good']); } else chips.push([squeezed?'short squeezed':'no point','bad']);
   const bonus=correct&&reasonOk; if(bonus) chips.push(['+1 right reason','brass']);
   const avoidedBad = correct && !goodBuy;
   if(avoidedBad){ wisdom++; chips.push(['+1 tulip dodged','brass']); }
@@ -991,10 +991,13 @@ function revealOpportunity(reasonOk){
     vv='At '+inst.pe+'\u00D7 it looked fairly priced — but the earnings were fabricated.';
     if(call==='short') vv+=' Shorting a fraud with a real catalyst is a classic winning short.';
   } else {
-    vv='With no real earnings, there was nothing to value it on. The price was pure story.';
-    if(call==='short') vv += squeezed
-      ? ' You were right it\u2019s a bubble \u2014 but the mania ran higher and squeezed your short. Being right isn\u2019t enough if you can\u2019t outlast the crowd. Passing is the disciplined call.'
-      : ' Your short paid when the bubble popped \u2014 but timing a mania is a gamble. Passing is the safer edge.';
+    if(call==='short' && squeezed){
+      vv='Good read — it really was a bubble with nothing behind it. But the mania ran higher and squeezed your short before it popped. Being right isn\u2019t enough if you can\u2019t outlast the crowd — passing is the safer way to be right.';
+    } else if(call==='short'){
+      vv='With no real earnings, there was nothing to value it on. Your short paid when the bubble popped — but timing a mania is a gamble; passing is the safer edge.';
+    } else {
+      vv='With no real earnings, there was nothing to value it on. The price was pure story.';
+    }
   }
   const fb = bonus ? '<span class="fb ok">\u2713 Right reason.</span>' : '<span class="fb">The read that mattered: \u201C'+curReason+'\u201D</span>';
   $('revealReason').innerHTML='<b>'+vv+'</b>'+fb;
@@ -1003,7 +1006,7 @@ function revealOpportunity(reasonOk){
   if(correct) streak++; else streak=0;
   if(streak>maxStreak) maxStreak=streak;
   const backType = inst.kind==='real' ? (inst.overpriced?'tulip':'real') : inst.kind==='declining' ? 'trap' : 'tulip';
-  paintBack(backType, tag(inst), inst.note, chips, correct, d);
+  paintBack(backType, squeezed?'Squeezed':tag(inst), inst.note, chips, correct, d);
 }
 
 function tag(inst){
@@ -1093,6 +1096,12 @@ function endGame(){
 let AC=null, muted=false;
 function ac(){ try{ if(!AC) AC=new (window.AudioContext||window.webkitAudioContext)(); if(AC.state==='suspended') AC.resume(); }catch(e){} return AC; }
 function toggleMute(){ muted=!muted; $('mute').textContent=muted?'\uD83D\uDD07':'\uD83D\uDD0A'; if(!muted) ac(); }
+let audioReady=false;
+function unlockAudio(){
+  const c=ac(); if(!c) return;
+  if(c.state==='suspended') c.resume();
+  if(!audioReady){ try{ const b=c.createBuffer(1,1,22050); const s=c.createBufferSource(); s.buffer=b; s.connect(c.destination); s.start(0); }catch(e){} audioReady=true; }
+}
 function blip(freq,t0,dur,type,vol){ const c=ac(); if(!c||muted) return; const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0; o.type=type||'triangle'; o.frequency.setValueAtTime(freq,t); g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(vol||0.2,t+0.012); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.03); }
 function bend(f1,f2,t0,dur,type,vol){ const c=ac(); if(!c||muted) return; const o=c.createOscillator(),g=c.createGain(),t=c.currentTime+t0; o.type=type||'sawtooth'; o.frequency.setValueAtTime(f1,t); o.frequency.exponentialRampToValueAtTime(Math.max(20,f2),t+dur); g.gain.setValueAtTime(vol||0.18,t); g.gain.exponentialRampToValueAtTime(0.0001,t+dur); o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+dur+0.03); }
 function sndWin(){ [523,659,784,1046,1318].forEach((f,i)=>blip(f,i*0.055,0.22,'triangle',0.22)); [1046,1318,1568].forEach(f=>blip(f,0.32,0.42,'sine',0.12)); }
@@ -1164,6 +1173,7 @@ function animateCount(el,from,to,win){
 function setEcho(t){ const e=$('echo'); if(t){ e.textContent=t; e.style.display='block'; } else { e.textContent=''; e.style.display='none'; } }
 
 renderRankbar('rankbar'); selectDiff('auto');
+['touchend','pointerdown','click'].forEach(ev=>document.addEventListener(ev, unlockAudio, {passive:true}));
 </script>
 </body>
 </html>
