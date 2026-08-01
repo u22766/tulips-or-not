@@ -31,8 +31,8 @@
   html,body{height:100%}
   body{font-family:'Inter',system-ui,sans-serif;color:var(--parchment);
     background:radial-gradient(140% 120% at 50% 0%, #1f4433 0%, var(--felt) 45%, var(--felt-deep) 100%);
-    min-height:100dvh;display:flex;flex-direction:column;align-items:center;padding:12px;overflow-x:hidden}
-  .wrap{width:100%;max-width:440px;margin:auto 0}
+    min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;justify-content:safe center;padding:12px;overflow-x:hidden}
+  .wrap{width:100%;max-width:440px}
 
   .ledger{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px}
   .stat{display:flex;flex-direction:column;gap:2px}
@@ -51,7 +51,7 @@
   .helper b{color:var(--brass);font-weight:600}
 
   .stage{position:relative;perspective:1400px;margin-bottom:14px}
-  .card{position:relative;width:100%;aspect-ratio:5/7;max-height:52dvh;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.8,.25,1)}
+  .card{position:relative;width:100%;aspect-ratio:5/7;max-height:46dvh;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.2,.8,.25,1)}
   .card.flipped{transform:rotateY(180deg)}
   .face{position:absolute;inset:0;backface-visibility:hidden;border-radius:16px;padding:24px 24px;
     display:flex;flex-direction:column;box-shadow:0 22px 40px -18px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.06) inset}
@@ -92,6 +92,9 @@
   .back.real .bloom{fill:#bff3d3}.back.tulip .bloom{fill:#ffd7d1}.back.trap .bloom{fill:#e6d6ee}
   .back.tulip .petals{transform:translateY(2px) scaleY(.86);transform-origin:center}
   .mark.storm{display:none}
+  .mark.good{display:none}
+  .back.real .mark.flower{display:none}
+  .back.real .mark.good{display:block}
   .mark.storm path{fill:none;stroke:#c7d2f0;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
   .back.event .mark.flower{display:none}.back.event .mark.storm{display:block}
 
@@ -280,7 +283,7 @@
       <div class="how-row"><span class="how-n">3</span><span>Score for the right call, a bonus for the right reason.</span></div>
     </div>
     <button class="start-btn" onclick="showCampaignMap()">Campaign</button>
-    <button class="start-btn secondary" onclick="startGame()">Free Play</button>
+    <button class="start-btn secondary" onclick="startGame()">Open Play</button>
     <p class="foot">Prototype · tap 🔊 for sound · your feedback shapes it</p>
   </section>
 
@@ -335,6 +338,9 @@
             </svg>
             <svg class="mark storm" viewBox="0 0 40 40" aria-hidden="true">
               <path d="M4 26 L14 14 L22 22 L36 8"/><path d="M28 8 H36 V16"/>
+            </svg>
+            <svg class="mark good" viewBox="0 0 40 40" aria-hidden="true">
+              <path d="M8 21 L17 30 L33 11" fill="none" stroke="#bff3d3" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
             </svg>
             <div class="verdict" id="verdict"></div>
           </div>
@@ -799,7 +805,7 @@ function beginSession(cfg){
   buildPips(); render();
 }
 
-function startGame(){  // Free Play
+function startGame(){  // Open Play
   campaign=null;
   const d=currentDiff();
   beginSession({flags:Object.assign({},ALL_ON), scouts:d.scouts, len:d.len, events:d.events, twist:d.twist, borderline:d.borderline, kinds:null, impostors:d.twist>0});
@@ -996,7 +1002,8 @@ function revealOpportunity(reasonOk){
 
   if(correct) streak++; else streak=0;
   if(streak>maxStreak) maxStreak=streak;
-  paintBack(inst.kind==='real'?'real':inst.kind==='declining'?'trap':'tulip', tag(inst), inst.note, chips, correct, d);
+  const backType = inst.kind==='real' ? (inst.overpriced?'tulip':'real') : inst.kind==='declining' ? 'trap' : 'tulip';
+  paintBack(backType, tag(inst), inst.note, chips, correct, d);
 }
 
 function tag(inst){
