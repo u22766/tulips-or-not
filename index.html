@@ -209,6 +209,15 @@
   .xp-earned{font-family:'Space Mono',monospace;font-weight:700;font-size:18px;color:var(--brass);margin-bottom:8px}
   .xp-earned .rankup{display:block;font-family:'Fraunces',serif;font-weight:900;font-size:16px;color:#ffcf4d;margin-top:4px}
 
+  .sizer{display:flex;flex-direction:column;gap:10px}
+  .sizer-label{text-align:center;font-size:13px;color:rgba(241,231,206,.72);font-weight:500}
+  .bank-note{color:rgba(241,231,206,.5);font-family:'Space Mono',monospace;font-size:12px}
+  .sizer-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+  .sizebtn{padding:14px 8px;border-radius:13px;font-weight:600;font-size:15px;background:rgba(241,231,206,.07);border:1px solid rgba(241,231,206,.22);color:var(--parchment);transition:transform .12s,background .2s,border-color .2s;display:flex;flex-direction:column;align-items:center;gap:4px}
+  .sizebtn:hover{background:rgba(241,231,206,.14);transform:translateY(-2px);border-color:var(--brass)}
+  .sizebtn .amt{font-family:'Space Mono',monospace;font-size:12px;font-weight:700;color:var(--brass)}
+  .chiplet.neutral{color:rgba(255,255,255,.82)}
+
   @media (max-width:380px){h1{font-size:38px}.cardname{font-size:24px}.act{font-size:14px}}
   @media (prefers-reduced-motion:reduce){.card{transition:none}*{transition-duration:.01ms !important;animation:none !important}}
 </style>
@@ -298,6 +307,14 @@
     </div>
     <div class="prompt" id="prompt"></div>
     <div class="actions" id="actions"></div>
+    <div class="sizer hidden" id="sizer">
+      <div class="sizer-label">Position size <span class="bank-note" id="bankNote"></span></div>
+      <div class="sizer-btns">
+        <button class="sizebtn" onclick="chooseSize(0.15)">Small<span class="amt" id="amt-s"></span></button>
+        <button class="sizebtn" onclick="chooseSize(0.35)">Medium<span class="amt" id="amt-m"></span></button>
+        <button class="sizebtn" onclick="chooseSize(0.60)">Large<span class="amt" id="amt-l"></span></button>
+      </div>
+    </div>
     <div class="reasons hidden" id="reasons"></div>
     <button class="next hidden" id="next" onclick="nextCard()">Next card</button>
   </section>
@@ -525,6 +542,7 @@ const FACTOR={bargain:0.72,fair:1.0,full:1.25,rich:1.6,bubble:2.3};
 let hand=[], idx=0, cash=1000, wisdom=0, sharp=0, call=null, cur=null, curReason=null;
 let fellForHype=0, missedReal=0, panicked=0, streak=0;
 let scoutsLeft=2, scouted={};
+let committed=0, sizeLabel='';
 const $=id=>document.getElementById(id);
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
@@ -633,6 +651,22 @@ function correctCalls(inst){
   return ['pass','short'];
 }
 
+/* Return on committed capital for a resolved trade. Pass commits nothing. */
+function tradeReturn(inst, call, squeezed){
+  if(call==='pass') return 0;
+  if(inst.kind==='real'){
+    if(call==='invest') return inst.overpriced ? -0.28 : (inst.scen==='bargain'? 0.45 : 0.18);
+    if(call==='short')  return inst.overpriced ? 0.18 : -0.28;
+  } else if(inst.kind==='declining'){
+    if(call==='invest') return -0.40;
+    if(call==='short')  return 0.30;
+  } else { // hollow
+    if(call==='invest') return inst.fraud ? -0.55 : -0.60;
+    if(call==='short')  return inst.fraud ? 0.35 : (squeezed ? -0.55 : 0.45);
+  }
+  return 0;
+}
+
 function startGame(){
   const d=currentDiff(); curDiff=d; scoutBudget=d.scouts;
   const oppCount=d.len-d.events;
@@ -677,6 +711,7 @@ function render(){
   $('card').classList.remove('flipped');
   $('prompt').textContent=isEvent?"The market just moved. What do you do?":"Scout what matters — then make your call.";
   $('reasons').classList.add('hidden'); $('next').classList.add('hidden');
+  $('sizer').classList.add('hidden'); committed=0; sizeLabel='';
   const opts=isEvent?cur.options:STD_OPTIONS;
   const box=$('actions'); box.innerHTML='';
   opts.forEach(o=>{const b=document.createElement('button');
@@ -688,9 +723,28 @@ function render(){
 }
 
 function chooseCall(key){
+  sndTick(); call=key;
+  $('actions').classList.add('hidden'); $('scoutRow').style.display='none';
+  if(key==='pass'){ committed=0; sizeLabel=''; goToReason(); return; }
+  const amt=f=>Math.max(10,Math.round(cash*f/10)*10);
+  $('amt-s').textContent='$'+amt(0.15).toLocaleString();
+  $('amt-m').textContent='$'+amt(0.35).toLocaleString();
+  $('amt-l').textContent='$'+amt(0.60).toLocaleString();
+  $('bankNote').textContent='of $'+cash.toLocaleString();
+  $('prompt').textContent = key==='invest'?"How much do you invest?":"How big is your short?";
+  $('sizer').classList.remove('hidden');
+}
+
+function chooseSize(frac){
   sndTick();
-  call=key; $('actions').classList.add('hidden'); $('scoutRow').style.display='none';
-  $('prompt').textContent = key==='invest'?"You bought in. Why?":key==='short'?"You're betting it falls. Why?":"You're passing. Why?";
+  committed=Math.max(10,Math.round(cash*frac/10)*10);
+  sizeLabel = frac<=0.15?'Small':frac<=0.35?'Medium':'Large';
+  goToReason();
+}
+
+function goToReason(){
+  $('sizer').classList.add('hidden');
+  $('prompt').textContent = call==='invest'?"You bought in. Why?":call==='short'?"You're betting it falls. Why?":"You're passing. Why?";
   const box=$('reasons'); box.innerHTML='';
   buildReasons(cur).forEach(r=>{const b=document.createElement('button');b.className='reason';b.textContent=r.t;b.onclick=()=>revealOpportunity(r.ok);box.appendChild(b)});
   box.classList.remove('hidden');
@@ -723,16 +777,8 @@ function revealOpportunity(reasonOk){
   let correct=correctCalls(inst).includes(call);
   if(squeezed) correct=false;
 
-  let d=0;
-  if(inst.kind==='real'){
-    if(call==='invest') d = inst.overpriced ? -300 : (inst.scen==='bargain'?400:250);
-    else if(call==='short') d = inst.overpriced ? 150 : -200;
-  } else if(inst.kind==='declining'){
-    if(call==='invest') d=-300; else if(call==='short') d=200;
-  } else { // hollow
-    if(call==='invest') d=-350;
-    else if(call==='short') d = inst.fraud ? 200 : (squeezed ? -250 : 200);
-  }
+  const ret=tradeReturn(inst, call, squeezed);
+  let d=Math.round(committed*ret);
   cash+=d;
 
   const chips=[];
@@ -740,6 +786,7 @@ function revealOpportunity(reasonOk){
   const bonus=correct&&reasonOk; if(bonus) chips.push(['+1 right reason','brass']);
   const avoidedBad = correct && !goodBuy;
   if(avoidedBad){ wisdom++; chips.push(['+1 tulip dodged','brass']); }
+  if(committed>0) chips.push([sizeLabel+' \u00B7 $'+committed.toLocaleString(),'neutral']);
   if(d!==0) chips.push([(d>0?'+':'')+money(d), d>0?'good':'bad']);
 
   if(!goodBuy && call==='invest') fellForHype++;
