@@ -179,6 +179,20 @@
   .stat.cash .val.up{color:#9ff0c0}.stat.cash .val.down{color:#ff9a8f}
   .streak-banner.hot{background:linear-gradient(90deg,#ff5e3a,#ffcf4d)}
 
+  .fundamentals{margin-top:16px;padding-top:13px;border-top:1px dashed rgba(42,32,24,.28)}
+  .reports{display:flex;flex-direction:column;gap:7px;margin-top:9px}
+  .report{font-size:13px;line-height:1.4;color:#4a3c2c;padding:8px 11px;background:rgba(42,32,24,.06);border-radius:9px;border-left:3px solid #b8912e;animation:slam .3s ease}
+  .report.warn{border-left-color:var(--tulip);color:#7a2a22;background:rgba(192,57,43,.08)}
+  .report .rk{font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;color:var(--ink-soft);font-weight:700;display:block;margin-bottom:2px}
+  .scout{margin-bottom:12px;background:rgba(0,0,0,.16);border:1px solid rgba(241,231,206,.1);border-radius:12px;padding:10px 12px}
+  .scout-label{font-size:12px;color:rgba(241,231,206,.72);font-weight:600;display:block;margin-bottom:8px}
+  .scout-label b{color:var(--brass)}
+  .scout-btns{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px}
+  .scoutbtn{padding:9px 6px;border-radius:9px;font-weight:600;font-size:12.5px;background:rgba(241,231,206,.08);border:1px solid rgba(241,231,206,.24);color:var(--parchment);transition:transform .1s,background .2s}
+  .scoutbtn:hover{background:rgba(241,231,206,.16);transform:translateY(-1px)}
+  .scoutbtn:disabled{opacity:.4;cursor:default;transform:none}
+  .scoutbtn.used{background:rgba(212,175,55,.16);border-color:rgba(212,175,55,.4);color:var(--brass);opacity:1}
+
   @media (max-width:380px){h1{font-size:38px}.cardname{font-size:24px}.act{font-size:14px}}
   @media (prefers-reduced-motion:reduce){.card{transition:none}*{transition-duration:.01ms !important;animation:none !important}}
 </style>
@@ -192,7 +206,7 @@
     <p class="lede">The same businesses turn up at different prices. A wonderful company is a smart buy when it's cheap — and a <b>tulip</b> when it's not.</p>
     <p class="lede small">Weigh the price against what the business earns. Is it a tulip at <i>this</i> price?</p>
     <div class="how">
-      <div class="how-row"><span class="how-n">1</span><span>Read the business — and the price it's asking.</span></div>
+      <div class="how-row"><span class="how-n">1</span><span>Scout the business (2 looks), then weigh it against the price.</span></div>
       <div class="how-row"><span class="how-n">2</span><span>Call it: Invest, Pass, or Short — then say why.</span></div>
       <div class="how-row"><span class="how-n">3</span><span>Score for the right call, a bonus for the right reason.</span></div>
     </div>
@@ -219,9 +233,8 @@
           <div class="cardname" id="cardname"></div>
           <div class="pitch" id="pitch"></div>
           <div class="fundamentals" id="fund">
-            <div class="fund-row"><span class="fk">Yearly earnings</span><span class="fv" id="eps"></span></div>
             <div class="fund-row"><span class="fk">Price</span><span class="fv" id="price"></span></div>
-            <div class="fund-mult" id="mult"></div>
+            <div class="reports" id="reports"></div>
           </div>
         </div>
         <div class="face back" id="back">
@@ -248,6 +261,14 @@
       <div class="streak-banner" id="streakBanner"></div>
     </div>
 
+    <div class="scout" id="scoutRow">
+      <span class="scout-label">🔍 Scout the business — <b id="scoutsLeft">2</b> looks left</span>
+      <div class="scout-btns">
+        <button class="scoutbtn" id="sc-earn" onclick="scout('earn')">Earnings</button>
+        <button class="scoutbtn" id="sc-moat" onclick="scout('moat')">Outlook</button>
+        <button class="scoutbtn" id="sc-books" onclick="scout('books')">The books</button>
+      </div>
+    </div>
     <div class="prompt" id="prompt"></div>
     <div class="actions" id="actions"></div>
     <div class="reasons hidden" id="reasons"></div>
@@ -425,10 +446,53 @@ const FACTOR={bargain:0.72,fair:1.0,full:1.25,rich:1.6,bubble:2.3};
 
 let hand=[], idx=0, cash=1000, wisdom=0, sharp=0, call=null, cur=null, curReason=null;
 let fellForHype=0, missedReal=0, panicked=0, streak=0;
+let scoutsLeft=2, scouted={};
 const $=id=>document.getElementById(id);
 function shuffle(a){a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 function pick(a){return a[Math.floor(Math.random()*a.length)]}
 function money(n){return (n<0?'-$':'$')+Math.abs(n).toLocaleString()}
+
+/* Surface = the non-diagnostic buzz a player sees BEFORE scouting.
+   Clustered so a hyped name and a real one can look identical — you must scout to tell them apart. */
+const SURFACE={
+  "Copper Creek Water":"A quiet utility nobody at school is talking about.",
+  "Old Reliable Soda":"An old, famous brand that's been around forever.",
+  "Keystone Rail":"A big, old infrastructure company. Unglamorous.",
+  "Silicon Foundry Chips":"A hyped name riding the red-hot chip boom.",
+  "Anchor Insurance":"A dull financial company. Hard to get excited about.",
+  "Meridian Cement":"About as boring as it gets — it makes building materials.",
+  "Harbor Grocery":"A plain regional retailer. Nothing flashy.",
+  "Ironside Tools":"An old-economy manufacturer. No buzz at all.",
+  "Northstar Cloud":"The buzzy leader everyone's excited about in a hot new sector.",
+  "Phoenix Motors":"A beaten-down name a lot of people have written off.",
+  "GlowCoin":"It's been going straight up. Everyone's piling in.",
+  "BrightLeaf Organics":"Up huge this month. Your neighbor just doubled his money.",
+  "MoonJet Rockets":"A thrilling story with a founder everyone loves.",
+  "PetPals.com":"A fast-growing online name splashing out on ads.",
+  "Plush Pals Collectibles":"The hot collectible everyone's hoarding right now.",
+  "Aurora AI Everything":"The buzzy new name in a hot, hyped sector.",
+  "GameStore Comeback":"Suddenly up huge as an online crowd piles in.",
+  "Titan Telecom":"A giant, admired company whose numbers keep climbing.",
+  "Summit Energy Trading":"An award-winning 'most innovative' company everyone praises.",
+  "FilmStar Photo Co.":"A trusted, iconic brand — and it's trading cheap.",
+  "Blockbuster Video":"The #1 name in its industry, trading cheap.",
+  "Prairie Mall Holdings":"Owns real assets and pays a nice dividend. Quiet.",
+  "Dividend Mirage":"Pays an eye-catching, unusually high dividend."
+};
+function rptEarnings(inst){ return inst.hasEps ? ('Earns $'+inst.eps.toFixed(2)+'/share — that\u2019s '+inst.pe+'\u00D7 the price.') : 'No real earnings. Nothing to value it on.'; }
+function rptMoat(inst){
+  if(inst.kind==='real') return 'A durable, real business with genuine demand and a real edge.';
+  if(inst.kind==='declining') return 'Its market is structurally shrinking — demand is moving away.';
+  if(inst.fraud) return 'Looks strong on the surface — big, fast-rising numbers.';
+  return 'No real business underneath — it\u2019s running on story and momentum.';
+}
+function rptBooks(inst){
+  if(inst.fraud) return 'The numbers look too smooth and perfect to be real.';
+  if(inst.div) return 'The dividend pays out more than the company actually earns.';
+  if(inst.kind==='declining') return 'Profitable for now — but earnings are quietly slipping.';
+  if(inst.kind==='hollow') return 'Nothing shady in the books — but nothing underneath, either.';
+  return 'Books look clean and healthy.';
+}
 
 function rint(lo,hi){ if(hi<lo) hi=lo; return lo+Math.floor(Math.random()*(hi-lo+1)); }
 
@@ -508,16 +572,18 @@ function render(){
   $('front').className='face front'+(isEvent?' event':'');
   $('eyebrow').textContent=(isEvent?'Market Event':'Opportunity')+'  \u00B7  '+(idx+1)+' of '+hand.length;
   $('cardname').textContent=cur.name;
-  $('pitch').textContent=isEvent?cur.pitch:cur.desc;
+  $('pitch').textContent=isEvent?cur.pitch:(SURFACE[cur.name]||cur.desc);
   $('helper').style.display=isEvent?'none':'block';
   $('fund').style.display=isEvent?'none':'block';
+  $('scoutRow').style.display=isEvent?'none':'block';
   if(!isEvent){
-    $('eps').textContent = cur.hasEps ? ('$'+cur.eps.toFixed(2)+' / '+cur.unit) : 'none';
-    $('price').textContent = '$'+cur.price+' / '+cur.unit;
-    $('mult').textContent = cur.hasEps ? ('That\u2019s '+cur.pe+'\u00D7 its yearly earnings.') : 'No earnings to value it on.';
+    $('price').textContent='$'+cur.price+' / '+cur.unit;
+    $('reports').innerHTML='';
+    scoutsLeft=2; scouted={}; $('scoutsLeft').textContent=scoutsLeft;
+    ['earn','moat','books'].forEach(r=>{const b=$('sc-'+r); b.disabled=false; b.classList.remove('used');});
   }
   $('card').classList.remove('flipped');
-  $('prompt').textContent=isEvent?"The market just moved. What do you do?":"What's your call?";
+  $('prompt').textContent=isEvent?"The market just moved. What do you do?":"Scout what matters — then make your call.";
   $('reasons').classList.add('hidden'); $('next').classList.add('hidden');
   const opts=isEvent?cur.options:STD_OPTIONS;
   const box=$('actions'); box.innerHTML='';
@@ -531,11 +597,27 @@ function render(){
 
 function chooseCall(key){
   sndTick();
-  call=key; $('actions').classList.add('hidden');
+  call=key; $('actions').classList.add('hidden'); $('scoutRow').style.display='none';
   $('prompt').textContent = key==='invest'?"You bought in. Why?":key==='short'?"You're betting it falls. Why?":"You're passing. Why?";
   const box=$('reasons'); box.innerHTML='';
   buildReasons(cur).forEach(r=>{const b=document.createElement('button');b.className='reason';b.textContent=r.t;b.onclick=()=>revealOpportunity(r.ok);box.appendChild(b)});
   box.classList.remove('hidden');
+}
+
+function scout(r){
+  if(scoutsLeft<=0 || scouted[r]) return;
+  scouted[r]=true; scoutsLeft--; sndTick();
+  $('scoutsLeft').textContent=scoutsLeft;
+  const b=$('sc-'+r); b.disabled=true; b.classList.add('used');
+  let label,text,warn=false;
+  if(r==='earn'){ label='Earnings'; text=rptEarnings(cur); warn=!cur.hasEps; }
+  else if(r==='moat'){ label='Outlook'; text=rptMoat(cur); warn=(cur.kind==='declining'); }
+  else { label='The books'; text=rptBooks(cur); warn=!!(cur.fraud||cur.div); }
+  const div=document.createElement('div');
+  div.className='report'+(warn?' warn':'');
+  div.innerHTML='<span class="rk">'+label+'</span>'+text;
+  $('reports').appendChild(div);
+  if(scoutsLeft<=0) ['earn','moat','books'].forEach(k=>{ if(!scouted[k]) $('sc-'+k).disabled=true; });
 }
 
 function revealOpportunity(reasonOk){
