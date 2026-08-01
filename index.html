@@ -193,6 +193,22 @@
   .scoutbtn:disabled{opacity:.4;cursor:default;transform:none}
   .scoutbtn.used{background:rgba(212,175,55,.16);border-color:rgba(212,175,55,.4);color:var(--brass);opacity:1}
 
+  .rankbar{margin:6px 0 16px;text-align:left}
+  .rank-top{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px}
+  .rank-name{font-family:'Fraunces',serif;font-weight:900;font-size:15px;color:var(--brass)}
+  .rank-xp{font-family:'Space Mono',monospace;font-size:11px;color:rgba(241,231,206,.6)}
+  .rank-track{height:7px;border-radius:99px;background:rgba(241,231,206,.12);overflow:hidden}
+  .rank-fill{height:100%;background:linear-gradient(90deg,var(--brass),#ffcf4d);border-radius:99px;transition:width .6s ease}
+  .difficulty{text-align:left;margin-bottom:20px}
+  .diff-heading{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:rgba(241,231,206,.55);font-weight:600;margin-bottom:8px}
+  .diff-btns{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .diffbtn{padding:9px 3px;border-radius:9px;font-weight:600;font-size:11.5px;background:rgba(241,231,206,.07);border:1px solid rgba(241,231,206,.2);color:var(--parchment);transition:background .2s,border-color .2s}
+  .diffbtn:hover{background:rgba(241,231,206,.14)}
+  .diffbtn.active{background:var(--brass);color:#2a2008;border-color:var(--brass)}
+  .diff-note{font-size:11.5px;line-height:1.4;color:rgba(241,231,206,.6);margin-top:8px;min-height:16px}
+  .xp-earned{font-family:'Space Mono',monospace;font-weight:700;font-size:18px;color:var(--brass);margin-bottom:8px}
+  .xp-earned .rankup{display:block;font-family:'Fraunces',serif;font-weight:900;font-size:16px;color:#ffcf4d;margin-top:4px}
+
   @media (max-width:380px){h1{font-size:38px}.cardname{font-size:24px}.act{font-size:14px}}
   @media (prefers-reduced-motion:reduce){.card{transition:none}*{transition-duration:.01ms !important;animation:none !important}}
 </style>
@@ -204,7 +220,18 @@
     <div class="flower-hero">Value vs. price</div>
     <h1>Tulips<span class="q">?</span><br>or Not</h1>
     <p class="lede">The same businesses turn up at different prices. A wonderful company is a smart buy when it's cheap — and a <b>tulip</b> when it's not.</p>
-    <p class="lede small">Weigh the price against what the business earns. Is it a tulip at <i>this</i> price?</p>
+    <div class="rankbar" id="rankbar"></div>
+    <div class="difficulty">
+      <div class="diff-heading">Difficulty</div>
+      <div class="diff-btns">
+        <button class="diffbtn active" data-d="auto" onclick="selectDiff('auto')">Auto</button>
+        <button class="diffbtn" data-d="easy" onclick="selectDiff('easy')">Easy</button>
+        <button class="diffbtn" data-d="normal" onclick="selectDiff('normal')">Normal</button>
+        <button class="diffbtn" data-d="hard" onclick="selectDiff('hard')">Hard</button>
+        <button class="diffbtn" data-d="expert" onclick="selectDiff('expert')">Expert</button>
+      </div>
+      <div class="diff-note" id="diffNote"></div>
+    </div>
     <div class="how">
       <div class="how-row"><span class="how-n">1</span><span>Scout the business (2 looks), then weigh it against the price.</span></div>
       <div class="how-row"><span class="how-n">2</span><span>Call it: Invest, Pass, or Short — then say why.</span></div>
@@ -284,6 +311,8 @@
       <div class="score-cell wis"><div class="n" id="fWis"></div><div class="k">Tulip Score</div></div>
       <div class="score-cell sharp"><div class="n" id="fSharp"></div><div class="k">Sharp calls</div></div>
     </div>
+    <div class="xp-earned" id="xpEarned"></div>
+    <div class="rankbar" id="rankbarEnd"></div>
     <button class="start-btn" onclick="startGame()">Play again</button>
   </section>
 
@@ -407,6 +436,19 @@ const BUSINESSES = [
    note:"An unsustainable dividend on a shrinking business — it gets cut.",
    right:"The dividend costs more than it earns — it can't last.",
    echo:"Real echo: high-yield 'traps' that paid out more than they earned, then cut the dividend."},
+
+  // IMPOSTORS (Hard+ only): the surface deliberately lies — you MUST scout to see the truth
+  {name:"Vertex Systems", kind:"real", eps:1.6, fairPE:28, maxPE:52, hard:true,
+   note:"A genuinely real, fast-growing leader hiding behind all the hype.",
+   echo:"Real echo: the early Amazons and Nvidias that looked like pure hype — but were real."},
+  {name:"Sterling Provincial", kind:"declining", eps:1.4, hard:true,
+   note:"It looked safe and dependable — but it's quietly shrinking.",
+   right:"A 'safe' name whose business is slowly eroding — a trap.",
+   echo:"Real echo: 'blue chip' names that looked stable while slowly rotting."},
+  {name:"Halcyon Holdings", kind:"hollow", hard:true,
+   note:"A respectable-sounding name with no real business underneath.",
+   right:"An impressive name, but there's nothing actually earning under it.",
+   echo:"Real echo: prestige-wrapped hype with no real earnings behind the brand."},
 ];
 
 const EVENTS = [
@@ -441,6 +483,42 @@ const EVENTS = [
 ];
 
 const STD_OPTIONS=[{key:"invest",label:"Invest",sub:"buy in"},{key:"pass",label:"Pass",sub:"sit out"},{key:"short",label:"Short",sub:"bet it falls"}];
+
+/* ---- Progression: ranks, difficulty, persistent profile ---- */
+const RANKS=[{n:'Novice',xp:0},{n:'Apprentice',xp:100},{n:'Analyst',xp:300},{n:'Sharp Eye',xp:650},{n:'Strategist',xp:1100},{n:'Value Hunter',xp:1800},{n:'Master Allocator',xp:2800}];
+function rankOf(xp){ let r=0; for(let i=0;i<RANKS.length;i++) if(xp>=RANKS[i].xp) r=i; return r; }
+const DIFF={
+  easy:  {scouts:3,len:12,events:2,twist:0,   borderline:false,label:'Easy'},
+  normal:{scouts:2,len:15,events:3,twist:0,   borderline:false,label:'Normal'},
+  hard:  {scouts:2,len:18,events:4,twist:0.25,borderline:true, label:'Hard'},
+  expert:{scouts:1,len:20,events:4,twist:0.4, borderline:true, label:'Expert'}
+};
+const DIFF_NOTE={
+  auto:'Adjusts to your rank as you level up.',
+  easy:'3 scouts \u00B7 shorter deck \u00B7 clearer prices.',
+  normal:'2 scouts \u00B7 the standard challenge.',
+  hard:'2 scouts \u00B7 longer deck \u00B7 impostor cards that lie.',
+  expert:'1 scout \u00B7 toughest prices \u00B7 most impostors.'
+};
+function autoDiff(level){ return level<=0?'easy':level<=2?'normal':level<=4?'hard':'expert'; }
+function loadProfile(){ try{ const s=localStorage.getItem('tulips_profile'); if(s) return JSON.parse(s); }catch(e){} return {xp:0,sessions:0,bestStreak:0}; }
+function saveProfile(p){ try{ localStorage.setItem('tulips_profile',JSON.stringify(p)); }catch(e){} }
+let profile=loadProfile();
+let diffChoice='auto', curDiff=null, scoutBudget=2, maxStreak=0;
+function currentDiff(){ const key=diffChoice==='auto'?autoDiff(rankOf(profile.xp||0)):diffChoice; return Object.assign({key},DIFF[key]); }
+function renderRankbar(id){
+  const el=$(id||'rankbar'); if(!el) return;
+  const xp=profile.xp||0, ri=rankOf(xp), cur=RANKS[ri], next=RANKS[ri+1];
+  let pct=100, right=xp+' XP \u00B7 max rank';
+  if(next){ const span=next.xp-cur.xp; pct=Math.max(0,Math.min(100,Math.round((xp-cur.xp)/span*100))); right=xp+' / '+next.xp+' XP'; }
+  el.innerHTML='<div class="rank-top"><span class="rank-name">\u25B2 '+cur.n+'</span><span class="rank-xp">'+right+'</span></div><div class="rank-track"><div class="rank-fill" style="width:'+pct+'%"></div></div>';
+}
+function selectDiff(key){
+  diffChoice=key;
+  [...document.querySelectorAll('.diffbtn')].forEach(b=>b.classList.toggle('active', b.dataset.d===key));
+  const resolved = key==='auto'?autoDiff(rankOf(profile.xp||0)):key;
+  const n=$('diffNote'); if(n) n.textContent=(key==='auto'?'Auto \u2192 '+DIFF[resolved].label+'. ':'')+DIFF_NOTE[key];
+}
 const SCEN=['bargain','bargain','fair','fair','full','rich','rich','bubble','bubble'];
 const FACTOR={bargain:0.72,fair:1.0,full:1.25,rich:1.6,bubble:2.3};
 
@@ -477,7 +555,10 @@ const SURFACE={
   "FilmStar Photo Co.":"A trusted, iconic brand — and it's trading cheap.",
   "Blockbuster Video":"The #1 name in its industry, trading cheap.",
   "Prairie Mall Holdings":"Owns real assets and pays a nice dividend. Quiet.",
-  "Dividend Mirage":"Pays an eye-catching, unusually high dividend."
+  "Dividend Mirage":"Pays an eye-catching, unusually high dividend.",
+  "Vertex Systems":"The hot new name everyone's chasing right now.",
+  "Sterling Provincial":"A dull, dependable old-line company. Feels safe.",
+  "Halcyon Holdings":"A respected, established-sounding firm."
 };
 function rptEarnings(inst){ return inst.hasEps ? ('Earns $'+inst.eps.toFixed(2)+'/share — that\u2019s '+inst.pe+'\u00D7 the price.') : 'No real earnings. Nothing to value it on.'; }
 function rptMoat(inst){
@@ -497,12 +578,13 @@ function rptBooks(inst){
 function rint(lo,hi){ if(hi<lo) hi=lo; return lo+Math.floor(Math.random()*(hi-lo+1)); }
 
 /* Price an instance of a business */
-function makeInstance(b){
+function makeInstance(b, hard){
   const inst=Object.assign({},b);
   inst.unit=b.unit||'share';
   if(b.kind==='real'){
     const floor=Math.max(8, Math.round(b.fairPE*0.66));
-    const scen=pick(['bargain','bargain','fair','fair','fair','rich','rich','rich']);
+    const scen=hard ? pick(['bargain','fair','fair','fair','fair','rich','rich'])
+                    : pick(['bargain','bargain','fair','fair','fair','rich','rich','rich']);
     let pe;
     if(scen==='bargain') pe=rint(floor, Math.round(b.fairPE*0.82));
     else if(scen==='fair') pe=rint(Math.round(b.fairPE*0.9), Math.round(b.fairPE*1.12));
@@ -552,11 +634,21 @@ function correctCalls(inst){
 }
 
 function startGame(){
-  const opps=shuffle(BUSINESSES).slice(0,12).map(makeInstance);
-  const evs=shuffle(EVENTS).slice(0,3);
-  hand=opps.slice();
-  hand.splice(4,0,evs[0]); hand.splice(9,0,evs[1]); hand.splice(14,0,evs[2]);
-  idx=0; cash=1000; wisdom=0; sharp=0; fellForHype=0; missedReal=0; panicked=0; streak=0; ac();
+  const d=currentDiff(); curDiff=d; scoutBudget=d.scouts;
+  const oppCount=d.len-d.events;
+  let pool=shuffle(BUSINESSES.filter(b=>!b.hard)).slice(0,oppCount);
+  if(d.twist>0){
+    const imps=shuffle(BUSINESSES.filter(b=>b.hard));
+    const nSwap=Math.min(imps.length, Math.max(1,Math.round(oppCount*d.twist)));
+    for(let i=0;i<nSwap && i<pool.length;i++) pool[i]=imps[i];
+    pool=shuffle(pool);
+  }
+  const opps=pool.map(b=>makeInstance(b,d.borderline));
+  const evs=shuffle(EVENTS).slice(0,d.events);
+  hand=[]; let ei=0; const chunk=oppCount/(d.events+1);
+  for(let i=0;i<opps.length;i++){ hand.push(opps[i]); if(ei<evs.length && (i+1)>=Math.round((ei+1)*chunk)){ hand.push(evs[ei]); ei++; } }
+  while(ei<evs.length) hand.push(evs[ei++]);
+  idx=0; cash=1000; wisdom=0; sharp=0; fellForHype=0; missedReal=0; panicked=0; streak=0; maxStreak=0; ac();
   $('helper').innerHTML=HELP;
   $('start').classList.add('hidden'); $('end').classList.add('hidden');
   $('game').classList.remove('hidden');
@@ -579,7 +671,7 @@ function render(){
   if(!isEvent){
     $('price').textContent='$'+cur.price+' / '+cur.unit;
     $('reports').innerHTML='';
-    scoutsLeft=2; scouted={}; $('scoutsLeft').textContent=scoutsLeft;
+    scoutsLeft=scoutBudget; scouted={}; $('scoutsLeft').textContent=scoutsLeft;
     ['earn','moat','books'].forEach(r=>{const b=$('sc-'+r); b.disabled=false; b.classList.remove('used');});
   }
   $('card').classList.remove('flipped');
@@ -675,6 +767,7 @@ function revealOpportunity(reasonOk){
   setEcho(inst.echo);
 
   if(correct) streak++; else streak=0;
+  if(streak>maxStreak) maxStreak=streak;
   paintBack(inst.kind==='real'?'real':inst.kind==='declining'?'trap':'tulip', tag(inst), inst.note, chips, correct, d);
 }
 
@@ -695,6 +788,7 @@ function resolveEvent(opt){
   $('revealReason').innerHTML='';
   setEcho(cur.echo);
   if(opt.correct) streak++; else streak=0;
+  if(streak>maxStreak) maxStreak=streak;
   paintBack('event', cur.verdict, cur.outcome, chips, opt.correct, opt.delta);
 }
 
@@ -731,7 +825,16 @@ function endGame(){
   if(panicked>=2) note+=" And mind the panic button — the market shook you loose a few times when standing pat was smarter.";
   const p=$('persona'); p.className='persona '+cls; p.textContent=title;
   $('personaNote').textContent=note;
-  if(cls==='sharp'){ confetti(70); sndStreak(3); }
+  // progression
+  const gained=Math.max(10, sharp*8 + wisdom*12 + maxStreak*10 + (cls==='sharp'?50:0));
+  const beforeRank=rankOf(profile.xp||0);
+  profile.xp=(profile.xp||0)+gained; profile.sessions=(profile.sessions||0)+1;
+  if(maxStreak>(profile.bestStreak||0)) profile.bestStreak=maxStreak;
+  const afterRank=rankOf(profile.xp); const ranked=afterRank>beforeRank;
+  saveProfile(profile);
+  $('xpEarned').innerHTML='+'+gained+' XP'+(ranked?' <span class="rankup">RANK UP \u2192 '+RANKS[afterRank].n+'!</span>':'');
+  renderRankbar('rankbarEnd');
+  if(cls==='sharp'||ranked){ confetti(70); sndStreak(3); }
 }
 
 /* ---------- pizzazz: sound + effects ---------- */
@@ -807,6 +910,8 @@ function animateCount(el,from,to,win){
   requestAnimationFrame(step);
 }
 function setEcho(t){ const e=$('echo'); if(t){ e.textContent=t; e.style.display='block'; } else { e.textContent=''; e.style.display='none'; } }
+
+renderRankbar('rankbar'); selectDiff('auto');
 </script>
 </body>
 </html>
