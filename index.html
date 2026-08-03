@@ -254,6 +254,49 @@
   .lr-badge.lose{color:var(--tulip)}
   .lr-goal{font-size:13px;color:rgba(241,231,206,.6)}
 
+  .ev-top{display:flex;justify-content:space-between;font-family:'Space Mono',monospace;font-size:12px;color:rgba(241,231,206,.6);margin-bottom:12px}
+  .ev-score{color:var(--brass);font-weight:700}
+  .ev-card{background:radial-gradient(120% 100% at 0% 0%,#f6eed8,var(--parchment));color:var(--ink);border-radius:16px;padding:20px 22px;margin-bottom:14px;box-shadow:0 18px 34px -18px rgba(0,0,0,.6)}
+  .evc-name{font-family:'Fraunces',serif;font-weight:900;font-size:24px;line-height:1.02;margin-bottom:8px}
+  .evc-desc{font-size:15px;line-height:1.5;color:#4a3c2c;margin-bottom:14px}
+  .evc-metric{font-family:'Space Mono',monospace;font-weight:700;font-size:15px;color:var(--ink);padding-top:12px;border-top:1px dashed rgba(42,32,24,.28)}
+  .ev-both-note{font-size:15px;line-height:1.5;color:#4a3c2c}
+  .ev-both-note b{color:var(--ink)}
+  .ev-prompt{text-align:center;font-size:14px;color:rgba(241,231,206,.82);margin-bottom:12px;font-weight:500}
+  .ev-choices{display:flex;flex-direction:column;gap:10px}
+  .ev-choice{padding:15px;border-radius:13px;font-weight:600;font-size:15px;background:rgba(241,231,206,.08);border:1px solid rgba(241,231,206,.24);color:var(--parchment);transition:transform .12s,background .2s,border-color .2s}
+  .ev-choice:hover{background:rgba(241,231,206,.15);transform:translateY(-2px);border-color:var(--brass)}
+  .ev-choices.ev-versus{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .ev-mini{background:radial-gradient(120% 100% at 0% 0%,#f6eed8,var(--parchment));color:var(--ink);border-radius:14px;padding:14px;text-align:left;border:2px solid transparent;transition:transform .12s,border-color .2s;cursor:pointer}
+  .ev-mini:hover{transform:translateY(-2px);border-color:var(--brass)}
+  .ev-mini .m-name{font-family:'Fraunces',serif;font-weight:900;font-size:16px;margin-bottom:6px;line-height:1.08}
+  .ev-mini .m-desc{font-size:12px;line-height:1.4;color:#4a3c2c;margin-bottom:10px}
+  .ev-mini .m-mult{font-family:'Space Mono',monospace;font-weight:700;font-size:13px;color:var(--ink)}
+  .ev-reveal{background:rgba(0,0,0,.2);border-radius:12px;padding:14px;font-size:14px;line-height:1.5;margin-bottom:14px;color:rgba(241,231,206,.9)}
+  .ev-reveal.good{border-left:3px solid var(--leaf)}
+  .ev-reveal.bad{border-left:3px solid var(--tulip)}
+  .ev-reveal b{color:var(--brass)}
+  .ev-reveal .rv-head{font-family:'Fraunces',serif;font-weight:900;font-size:16px;margin-bottom:6px}
+  .ev-reveal.good .rv-head{color:#9ff0c0}
+  .ev-reveal.bad .rv-head{color:#ff9a8f}
+  .bridge-sec{text-align:left;margin-bottom:18px}
+  .bridge-sec h3{font-family:'Fraunces',serif;font-weight:900;font-size:17px;color:var(--brass);margin-bottom:10px}
+  .bridge-step{display:flex;gap:10px;margin-bottom:9px;font-size:14px;line-height:1.45;color:rgba(241,231,206,.85)}
+  .bridge-step .bs-n{flex:none;width:22px;height:22px;border-radius:50%;background:rgba(212,175,55,.16);border:1px solid rgba(212,175,55,.4);color:var(--brass);font-family:'Space Mono',monospace;font-weight:700;font-size:12px;display:flex;align-items:center;justify-content:center;margin-top:1px}
+  .bridge-disclaimer{font-size:11.5px;line-height:1.5;color:rgba(241,231,206,.55);background:rgba(0,0,0,.16);border-radius:10px;padding:12px;margin-bottom:18px;text-align:left}
+
+  .case-yr{font-family:'Space Mono',monospace;font-size:11px;color:#8a6d2f;font-weight:700;margin-bottom:12px;text-transform:uppercase;letter-spacing:.08em}
+  .case-snap{border-top:1px dashed rgba(42,32,24,.28);padding-top:10px;margin-bottom:12px}
+  .cs-row{display:flex;justify-content:space-between;gap:14px;font-size:13px;padding:4px 0;align-items:baseline;border-bottom:1px solid rgba(42,32,24,.08)}
+  .cs-k{color:#7a6a52;font-weight:700;flex:none}
+  .cs-v{color:#3a2f22;text-align:right;line-height:1.35}
+  .case-ctx{font-size:14px;line-height:1.5;color:#4a3c2c;font-style:italic;border-top:1px dashed rgba(42,32,24,.28);padding-top:12px}
+  .case-read{margin-bottom:11px;line-height:1.55}
+  .case-read b{color:var(--brass)}
+  .case-outcome{margin-bottom:11px;line-height:1.55}
+  .case-outcome b{color:#ff9a8f}
+  .case-lesson{background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.3);border-radius:9px;padding:10px 12px;font-size:13px;line-height:1.5;color:rgba(241,231,206,.92)}
+
   @media (max-width:380px){h1{font-size:38px}.cardname{font-size:24px}.act{font-size:14px}}
   @media (prefers-reduced-motion:reduce){.card{transition:none}*{transition-duration:.01ms !important;animation:none !important}}
 </style>
@@ -283,6 +326,8 @@
       <div class="how-row"><span class="how-n">3</span><span>Score for the right call, a bonus for the right reason.</span></div>
     </div>
     <button class="start-btn" onclick="showCampaignMap()">Campaign</button>
+    <button class="start-btn secondary" onclick="showEvalMap()">The Evaluator · Stage 2</button>
+    <button class="start-btn secondary" onclick="showCaseMap()">Case Files · Real History</button>
     <button class="start-btn secondary" onclick="startGame()">Open Play</button>
     <p class="foot">Prototype · tap 🔊 for sound · your feedback shapes it</p>
   </section>
@@ -302,6 +347,78 @@
     <div class="li-goal" id="liGoal"></div>
     <button class="start-btn" id="liStart">Start level</button>
     <button class="start-btn secondary" onclick="showCampaignMap()">Back</button>
+  </section>
+
+  <section id="evalMap" class="panel hidden">
+    <div class="flower-hero">Stage 2</div>
+    <h1 class="camp-h1">The Evaluator</h1>
+    <p class="lede small">From feeling value to judging it — learn the real evaluation process, one lens at a time.</p>
+    <div class="level-list" id="evalList"></div>
+    <button class="start-btn secondary" onclick="backToStart()">Back</button>
+  </section>
+
+  <section id="evalIntro" class="panel hidden">
+    <div class="flower-hero" id="eiNum"></div>
+    <h1 class="camp-h1" id="eiTitle"></h1>
+    <p class="lede" id="eiTeach"></p>
+    <div class="li-goal" id="eiGoal"></div>
+    <button class="start-btn" id="eiStart">Start</button>
+    <button class="start-btn secondary" onclick="showEvalMap()">Back</button>
+  </section>
+
+  <section id="evalPlay" class="hidden">
+    <div class="ev-top"><span class="ev-progress" id="evProgress"></span><span class="ev-score" id="evScore"></span></div>
+    <div class="ev-card" id="evCard"></div>
+    <div class="ev-prompt" id="evPrompt"></div>
+    <div class="ev-choices" id="evChoices"></div>
+    <div class="ev-reveal hidden" id="evReveal"></div>
+    <button class="next hidden" id="evNext" onclick="evalNext()">Next</button>
+  </section>
+
+  <section id="evalBridge" class="panel hidden">
+    <div class="flower-hero">Stage 2 · Final</div>
+    <h1 class="camp-h1">Into the Real World</h1>
+    <p class="lede small">You've learned to judge price against value. Here's the real-world version of everything you just practiced.</p>
+    <div class="bridge-sec">
+      <h3>The "Is this price fair?" checklist</h3>
+      <div class="bridge-step"><span class="bs-n">1</span><span><b>Earnings &amp; growth.</b> What does it actually earn — and is that growing, flat, or shrinking?</span></div>
+      <div class="bridge-step"><span class="bs-n">2</span><span><b>Durability.</b> Can rivals easily copy it, or does a moat protect its profits?</span></div>
+      <div class="bridge-step"><span class="bs-n">3</span><span><b>The price.</b> What multiple are you paying? A steady business is worth ~15×; a grower can justify roughly its growth rate. Is the number justified?</span></div>
+      <div class="bridge-step"><span class="bs-n">4</span><span><b>What could go wrong?</b> If it looks cheap, ask <i>why</i> — a low price on a shrinking business is a trap, not a bargain.</span></div>
+    </div>
+    <div class="bridge-sec">
+      <h3>Do it for real: use a screener</h3>
+      <div class="bridge-step"><span class="bs-n">→</span><span>Most brokerages (and free stock screeners) let you filter companies by P/E, growth, and sector.</span></div>
+      <div class="bridge-step"><span class="bs-n">→</span><span>Filter for what you learned: a fair multiple for the growth, real earnings, a durable business.</span></div>
+      <div class="bridge-step"><span class="bs-n">→</span><span>The screener finds names — <b>you</b> judge them with the checklist. That's the whole skill.</span></div>
+    </div>
+    <div class="bridge-disclaimer">This game teaches a way of <i>thinking</i>, not what to buy. It isn't financial advice — real decisions and real risks are yours. Prices and multiples change constantly, so always check current numbers before deciding anything.</div>
+    <button class="start-btn" onclick="graduate()">★ Graduate</button>
+    <button class="start-btn secondary" onclick="showEvalMap()">Back</button>
+  </section>
+
+  <section id="evalEnd" class="panel hidden">
+    <div class="flower-hero">Stage complete</div>
+    <div class="lr-badge" id="evEndBadge"></div>
+    <p class="persona-note" id="evEndNote"></p>
+    <div id="evEndActions"></div>
+  </section>
+
+  <section id="caseFiles" class="panel hidden">
+    <div class="flower-hero">Case Files</div>
+    <h1 class="camp-h1">Real History</h1>
+    <p class="lede small">Real companies, real numbers, frozen at a real moment. Make your call — then compare your read to the disciplined analysis and what actually happened.</p>
+    <div class="level-list" id="caseList"></div>
+    <button class="start-btn secondary" onclick="backToStart()">Back</button>
+  </section>
+
+  <section id="casePlay" class="hidden">
+    <div class="ev-top"><span class="ev-progress" id="caseTag"></span><span class="ev-score" id="caseCo"></span></div>
+    <div class="ev-card" id="caseCard"></div>
+    <div class="ev-prompt" id="casePrompt"></div>
+    <div class="ev-choices" id="caseChoices"></div>
+    <div class="ev-reveal hidden" id="caseReveal"></div>
+    <button class="next hidden" id="caseNext" onclick="caseNext()">Next case</button>
   </section>
 
   <section id="game" class="hidden">
@@ -963,7 +1080,7 @@ function startLevel(i){
   beginSession({flags:Object.assign({},L.flags), scouts:L.flags.scout?2:3, len:L.len, events:evCount, twist:0.25, borderline:L.borderline, kinds:L.kinds, impostors:L.flags.impostors});
 }
 function clearedLevel(){ return (profile.campaignCleared==null)?-1:profile.campaignCleared; }
-function backToStart(){ ['campaign','game','end','levelIntro'].forEach(id=>$(id).classList.add('hidden')); $('start').classList.remove('hidden'); renderRankbar('rankbar'); }
+function backToStart(){ ['campaign','game','end','levelIntro','evalMap','evalIntro','evalPlay','evalBridge','evalEnd','caseFiles','casePlay'].forEach(id=>$(id).classList.add('hidden')); $('start').classList.remove('hidden'); renderRankbar('rankbar'); }
 function showCampaignMap(){
   ['start','game','end','levelIntro'].forEach(id=>$(id).classList.add('hidden'));
   $('campaign').classList.remove('hidden');
@@ -1332,6 +1449,256 @@ function fitCard(face){
   });
 }
 window.addEventListener('resize', ()=>{ const c=$('card'); if(c) fitCard(c.classList.contains('flipped')?'back':'front'); });
+
+
+/* ============ STAGE 2: THE EVALUATOR ============ */
+const EVAL_LEVELS=[
+ {type:"chain1", t:"Steady or Grower?",
+  teach:"A price only means something next to the business. First, learn the two speeds: a steady business and a fast grower deserve very different prices.",
+  goalLabel:"Get 6 of 8 right", rounds:8, goal:6},
+ {type:"versus", t:"Same Price, Different Story",
+  teach:"Here's the trap: two companies can cost the exact same multiple — yet one is a bargain and the other a disaster. The number is identical; the business decides.",
+  goalLabel:"Spot 6 of 8 real buys", rounds:8, goal:6},
+ {type:"chain3", t:"The Analyst's Lens",
+  teach:"Now the real tool: growth changes the math. A fast grower can be cheap at 30x while a flat business is dear at 15x. Weigh the multiple against growth and moat.",
+  goalLabel:"Get 6 of 8 right", rounds:8, goal:6},
+ {type:"bridge", t:"Into the Real World",
+  teach:"You've learned to judge price against value. Here's how to do it for real — with your own brokerage, on real companies.",
+  goalLabel:"Graduate"}
+];
+const EVAL3=[
+ {name:"Cirrus Cloud", line:"The clear leader in cloud software, growing fast with a moat rivals can't crack.", pe:30, growth:28, moat:"wide", correct:"fair", why:"30x on 28% growth is a PEG near 1 — with a wide moat, that's a fair price for fast, durable growth."},
+ {name:"Blitz Apps", line:"A trendy app growing fast, but anyone could clone it — no real moat.", pe:60, growth:20, moat:"weak", correct:"steep", why:"60x for 20% growth (a PEG of 3) and no moat means you're paying for perfection that may never arrive."},
+ {name:"Steady Power Co", line:"A regulated utility that barely grows — safe, but going nowhere fast.", pe:23, growth:3, moat:"wide", correct:"steep", why:"23x for a business growing 3% is steep — slow growth simply can't justify a high multiple."},
+ {name:"Northgate Systems", line:"A durable software leader growing 25% a year, quietly dominant.", pe:18, growth:25, moat:"wide", correct:"cheap", why:"18x for 25% durable growth is a PEG well under 1 — genuinely cheap for the quality."},
+ {name:"Fading Retail", line:"Looks dirt cheap — but its sales shrink a little more every year.", pe:9, growth:-4, moat:"weak", correct:"steep", why:"9x looks cheap, but earnings are shrinking — a low multiple on a declining business is a value trap, not a bargain."},
+ {name:"Anchor Brands", line:"A wide-moat consumer giant growing a steady 9% with rock-solid demand.", pe:19, growth:9, moat:"wide", correct:"fair", why:"19x for 9% steady growth and a wide moat is about fair — you pay a little up for durability."},
+ {name:"Peak Devices", line:"A great, growing business — but the crowd has already bid it sky-high.", pe:48, growth:14, moat:"wide", correct:"steep", why:"Even a wonderful business is a bad buy at 48x for 14% growth — the price already assumes years of perfection."},
+ {name:"Meridian Health", line:"A dependable medical supplier growing 17%, with patents protecting it.", pe:21, growth:17, moat:"wide", correct:"fair", why:"21x for 17% growth (PEG about 1.2) with patent protection is a fair price."}
+];
+
+let evL=null, evRound=0, evScore=0, evHand=[], evStep=0, evAnswers={};
+function evCleared(){ return profile.evalCleared==null?-1:profile.evalCleared; }
+
+function showEvalMap(){
+  ["start","game","end","campaign","levelIntro","evalIntro","evalPlay","evalBridge","evalEnd"].forEach(id=>$(id)&&$(id).classList.add("hidden"));
+  $("evalMap").classList.remove("hidden");
+  const cleared=evCleared(), list=$("evalList"); list.innerHTML="";
+  EVAL_LEVELS.forEach((L,i)=>{
+    const unlocked=i<=cleared+1, done=i<=cleared;
+    const row=document.createElement("button");
+    row.className="level-row "+(done?"done":unlocked?"open":"locked"); row.disabled=!unlocked;
+    row.innerHTML="<span class=\"lv-num\">"+(done?"\u2714":unlocked?(i+1):"\uD83D\uDD12")+"</span><span class=\"lv-name\">"+L.t+"</span><span class=\"lv-goal\">"+L.goalLabel+"</span>";
+    if(unlocked) row.onclick=()=>showEvalIntro(i);
+    list.appendChild(row);
+  });
+}
+function showEvalIntro(i){
+  ["start","evalMap","evalPlay","evalBridge","evalEnd"].forEach(id=>$(id).classList.add("hidden"));
+  $("evalIntro").classList.remove("hidden");
+  const L=EVAL_LEVELS[i];
+  $("eiNum").textContent="Evaluator \u00B7 Stage "+(i+1);
+  $("eiTitle").textContent=L.t; $("eiTeach").textContent=L.teach;
+  $("eiGoal").innerHTML="\uD83C\uDFAF "+L.goalLabel;
+  $("eiStart").onclick=()=>startEval(i);
+}
+function startEval(i){
+  evL=i; evScore=0; evRound=0; evStep=0; evAnswers={};
+  const L=EVAL_LEVELS[i];
+  ["start","evalMap","evalIntro","evalEnd","evalBridge"].forEach(id=>$(id).classList.add("hidden"));
+  if(L.type==="bridge"){ showEvalBridge(); return; }
+  if(L.type==="chain1"){
+    evHand=shuffle(BUSINESSES.filter(b=>b.kind==="real"&&!b.hard)).slice(0,L.rounds).map(b=>{
+      const m=pick([Math.round(b.fairPE*0.72),Math.round(b.fairPE*0.9),b.fairPE,Math.round(b.fairPE*1.28),Math.round(b.fairPE*1.7)]);
+      return {b, mult:Math.max(6,m)};
+    });
+  } else if(L.type==="versus"){
+    const reals=shuffle(BUSINESSES.filter(b=>b.kind==="real"&&!b.hard));
+    const traps=shuffle(BUSINESSES.filter(b=>b.kind==="declining"&&!b.hard));
+    evHand=[]; for(let k=0;k<L.rounds;k++){ evHand.push({real:reals[k%reals.length], trap:traps[k%traps.length], mult:pick([12,15,18,20]), realLeft:Math.random()<0.5}); }
+  } else if(L.type==="chain3"){
+    evHand=shuffle(EVAL3).slice(0,L.rounds);
+  }
+  $("evalPlay").classList.remove("hidden");
+  renderEvalRound();
+}
+function evBtns(labels, cb){
+  const box=$("evChoices"); box.className="ev-choices"; box.innerHTML="";
+  labels.forEach(l=>{ const b=document.createElement("button"); b.className="ev-choice"; b.textContent=l; b.onclick=()=>cb(l); box.appendChild(b); });
+}
+function renderEvalRound(){
+  const L=EVAL_LEVELS[evL];
+  $("evProgress").textContent="Q "+(evRound+1)+" of "+L.rounds;
+  $("evScore").textContent=evScore+" / "+L.goal+" to pass";
+  $("evReveal").classList.add("hidden"); $("evNext").classList.add("hidden");
+  $("evChoices").className="ev-choices"; evStep=0; evAnswers={};
+  if(L.type==="chain1") renderChain1();
+  else if(L.type==="chain3") renderChain3();
+  else if(L.type==="versus") renderVersus();
+}
+function renderChain1(){
+  const cur=evHand[evRound], b=cur.b, type=b.fairPE>=24?"grower":"steady";
+  $("evCard").innerHTML="<div class=\"evc-name\">"+b.name+"</div><div class=\"evc-desc\">"+b.desc+"</div><div class=\"evc-metric\">You'd pay "+cur.mult+"\u00D7 its yearly earnings.</div>";
+  if(evStep===0){
+    $("evPrompt").textContent="What kind of business is this?";
+    evBtns(["Steady & reliable","Fast-growing"], p=>{ evAnswers.type=p.charAt(0)==="S"?"steady":"grower"; evStep=1; renderChain1(); });
+  } else {
+    $("evPrompt").textContent="For that kind of business, is "+cur.mult+"\u00D7 earnings\u2026";
+    evBtns(["Cheap","Fair","Steep"], p=>{
+      const bands = type==="grower"?{c:22,s:31}:{c:13,s:18};
+      const correctJudge = cur.mult<bands.c?"cheap":cur.mult>bands.s?"steep":"fair";
+      const typeRight=evAnswers.type===type, ok=typeRight && p.toLowerCase()===correctJudge;
+      evReveal(ok, "<div class=\"rv-head\">"+(ok?"Right":"Not quite")+"</div>It's a <b>"+type+"</b> business, so a fair price is about <b>"+(type==="grower"?"25\u201330\u00D7":"15\u00D7")+"</b>. At "+cur.mult+"\u00D7, that's <b>"+correctJudge+"</b>."+(typeRight?"":" (You read it as "+evAnswers.type+".)"));
+    });
+  }
+}
+function renderChain3(){
+  const c=evHand[evRound];
+  $("evCard").innerHTML="<div class=\"evc-name\">"+c.name+"</div><div class=\"evc-desc\">"+c.line+"</div><div class=\"evc-metric\">P/E "+c.pe+"  \u00B7  grows "+(c.growth<0?c.growth:"+"+c.growth)+"%/yr  \u00B7  "+c.moat+" moat</div>";
+  $("evPrompt").textContent="Given its growth and moat, is a P/E of "+c.pe+"\u2026";
+  evBtns(["Cheap","Fair","Steep"], p=>{
+    const ok=p.toLowerCase()===c.correct;
+    evReveal(ok, "<div class=\"rv-head\">"+(ok?"Right":"Not quite")+"</div>"+c.why);
+  });
+}
+function renderVersus(){
+  const cur=evHand[evRound];
+  const left = cur.realLeft?cur.real:cur.trap, right = cur.realLeft?cur.trap:cur.real;
+  $("evCard").innerHTML="<div class=\"ev-both-note\">Both cost <b>"+cur.mult+"\u00D7</b> their yearly earnings. Only one is worth it.</div>";
+  $("evPrompt").textContent="Which is actually worth "+cur.mult+"\u00D7 earnings?";
+  const box=$("evChoices"); box.className="ev-choices ev-versus"; box.innerHTML="";
+  [left,right].forEach(bz=>{
+    const isReal=(bz===cur.real);
+    const btn=document.createElement("button"); btn.className="ev-mini";
+    btn.innerHTML="<div class=\"m-name\">"+bz.name+"</div><div class=\"m-desc\">"+bz.desc+"</div><div class=\"m-mult\">"+cur.mult+"\u00D7 earnings</div>";
+    btn.onclick=()=>evReveal(isReal, "<div class=\"rv-head\">"+(isReal?"Right":"Trap")+"</div>Both cost "+cur.mult+"\u00D7. <b>"+cur.real.name+"</b> is durable, so its earnings hold or grow \u2014 "+cur.mult+"\u00D7 is fair. <b>"+cur.trap.name+"</b> is shrinking, so its earnings will fall \u2014 the same "+cur.mult+"\u00D7 is actually expensive. Same number, opposite verdict.");
+    box.appendChild(btn);
+  });
+}
+function evReveal(ok, html){
+  if(ok){ evScore++; sndWin(); confetti(14); } else sndLose();
+  $("evScore").textContent=evScore+" / "+EVAL_LEVELS[evL].goal+" to pass";
+  const r=$("evReveal"); r.className="ev-reveal "+(ok?"good":"bad"); r.innerHTML=html; r.classList.remove("hidden");
+  $("evChoices").innerHTML="";
+  $("evNext").textContent = evRound===EVAL_LEVELS[evL].rounds-1?"See result":"Next";
+  $("evNext").classList.remove("hidden");
+}
+function evalNext(){ evRound++; if(evRound>=EVAL_LEVELS[evL].rounds){ endEval(); return; } renderEvalRound(); }
+function endEval(){
+  const L=EVAL_LEVELS[evL], won=evScore>=L.goal;
+  if(won && evL>evCleared()){ profile.evalCleared=evL; }
+  const gained=Math.max(10, evScore*15 + (won?40:0));
+  profile.xp=(profile.xp||0)+gained; saveProfile(profile);
+  $("evalPlay").classList.add("hidden"); $("evalEnd").classList.remove("hidden");
+  $("evEndBadge").className="lr-badge "+(won?"win":"lose");
+  $("evEndBadge").textContent=won?"\u2714 Stage Cleared":"\u2717 Not yet";
+  $("evEndNote").textContent = won ? ("You judged "+evScore+" of "+L.rounds+" right.  +"+gained+" XP") : ("You got "+evScore+" of "+L.rounds+" — you need "+L.goal+". Give it another run.");
+  const hasNext=evL+1<EVAL_LEVELS.length; let btns="";
+  if(won && hasNext) btns+="<button class=\"start-btn\" onclick=\"showEvalIntro("+(evL+1)+")\">Next stage \u2192</button>";
+  else if(!won) btns+="<button class=\"start-btn\" onclick=\"startEval("+evL+")\">Retry</button>";
+  btns+="<button class=\"start-btn secondary\" onclick=\"showEvalMap()\">Evaluator map</button>";
+  $("evEndActions").innerHTML=btns;
+  if(won){ confetti(60); sndStreak(2); }
+}
+function showEvalBridge(){
+  ["start","evalMap","evalIntro","evalPlay","evalEnd"].forEach(id=>$(id).classList.add("hidden"));
+  $("evalBridge").classList.remove("hidden");
+}
+function graduate(){
+  if(EVAL_LEVELS.length-1>evCleared()) profile.evalCleared=EVAL_LEVELS.length-1;
+  profile.xp=(profile.xp||0)+100; saveProfile(profile);
+  confetti(90); sndStreak(3);
+  showEvalMap();
+}
+
+
+/* ============ CASE FILES: real, fact-checked history ============ */
+const CASE_OPTIONS=["A bargain \u2014 cheap for the quality","Fair \u2014 a good price for the growth","Overpriced \u2014 great business, bad price","Avoid \u2014 the value isn't real"];
+const CASES=[
+ {co:"Sears Holdings", yr:"2013", tag:"Looked cheap", correct:3,
+  snapshot:[["Price","~$50, down from ~$130 in 2007"],["The bull case","Owns valuable real estate + brands (Craftsman, Kenmore)"],["The business","Same-store sales falling 3-4%/yr; revenue sliding toward $15B from ~$50B"],["Earnings","Losing money most years"]],
+  context:"A famous retailer, run by a star hedge-fund investor, far below its old highs. Bulls said the real estate alone was worth more than the whole stock. Bargain?",
+  q:"Your read on Sears in 2013?",
+  read:"The checklist separates a cheap price from a good one: earnings are shrinking and the core business (its moat) erodes to online retail every year. A pile of 'valuable' real estate doesn't save a business losing money inside it. Cheap on assets \u2014 but the value was melting.",
+  outcome:"Sears kept shrinking, sold off its best assets, and filed for bankruptcy in 2018. The stock went to pennies. The 'cheap' price was cheap for a reason.",
+  lesson:"A low price on a declining business isn't a bargain \u2014 it's a trap. Durability matters more than the asset list."},
+
+ {co:"American Express", yr:"1964", tag:"Looked broken", correct:0,
+  snapshot:[["Price","~$35, cut nearly in half in months"],["Why it fell","A supplier's fraud (the 'salad oil' scandal) left it facing big claims"],["The core business","Charge cards + travelers cheques \u2014 profitable, growing, ~66% share"],["The damage","Serious but one-time and contained \u2014 not the actual business"]],
+  context:"A blue-chip financial name cut nearly in half in weeks by a scandal at a subsidiary. Wall Street panicked \u2014 but the core card business kept humming. Cheap wreck, or bargain?",
+  q:"Your read on American Express in 1964?",
+  read:"The checklist separates the scare from the business: the loss was a defined, one-time hit, while the charge-card and travelers-cheque franchise stayed durable, profitable, and growing. A great business made cheap by a temporary, fixable problem is the very definition of a bargain \u2014 the opposite of a value trap.",
+  outcome:"Once the liability proved manageable, the stock recovered strongly \u2014 up roughly 150% over the next few years. A young Warren Buffett bet a huge share of his fund on it; it became one of his defining wins.",
+  lesson:"Cheap from a temporary scare on a durable business = bargain. Cheap because the business is dying = trap. Same low price, opposite verdicts \u2014 the difference is whether the problem is fixable."},
+
+ {co:"Pets.com", yr:"2000", tag:"Pure hype", correct:3,
+  snapshot:[["Price at IPO","$11 \u00B7 ~$290M value (Feb 2000)"],["Revenue","~$26M in its first 9 months"],["Marketing spend","$60M+ over those 9 months \u2014 more than it sold"],["Profit","None \u2014 it shipped 40-lb bags of food at a loss"]],
+  context:"The most famous dot-com of its moment \u2014 sock-puppet mascot, Super Bowl ad, backed by Amazon. Everyone knew the brand. It had just gone public. Buy the hype?",
+  q:"Your read on Pets.com at its 2000 IPO?",
+  read:"The checklist stops you at step one: no earnings and no realistic path to them \u2014 it lost money on every order and spent more on ads than it earned in sales. A famous brand on broken unit economics is a story, not a business.",
+  outcome:"Pets.com collapsed just 268 days after its IPO, in November 2000. (The idea wasn't crazy \u2014 Chewy later thrived \u2014 but Pets.com had no path to profit and no time.)",
+  lesson:"Brand and buzz aren't earnings. If a company loses money on every sale with no path to profit, the price is pure story."},
+
+ {co:"Cisco Systems", yr:"2000", tag:"Looked unstoppable", correct:2,
+  snapshot:[["Price","$80 at its March 2000 peak \u2014 the most valuable company on earth (~$550B)"],["Multiple","A P/E around 200"],["The business","Genuinely dominant \u2014 the routers + switches running the internet"],["The growth","Real and fast \u2014 but the price assumed perfection for a decade"]],
+  context:"The undisputed leader of the internet build-out \u2014 fast-growing, wildly profitable, briefly the world's most valuable company, at ~200x earnings. A must-own? Pay up for the best?",
+  q:"Your read on Cisco in 2000?",
+  read:"The checklist flags the price, not the business: Cisco was a wonderful, growing company \u2014 but ~200x earnings prices in flawless growth for many years. Even a great business is a poor investment when the multiple already assumes perfection. This is 'overpriced,' not a trap: the business is real, the price isn't.",
+  outcome:"Cisco's business kept growing for two decades \u2014 revenue more than doubled. But the stock fell nearly 90% after the bubble and took about 25 years to regain its 2000 high. Buyers at the peak were right about the company and still lost for a generation.",
+  lesson:"A wonderful business at an absurd price is still a bad buy. The price you pay matters as much as the company \u2014 being right about the business isn't enough if you overpay."},
+
+ {co:"Enron", yr:"2000", tag:"Too good to be true", correct:3,
+  snapshot:[["Price","$90.75 at its Aug 2000 peak (~$70B)"],["Multiple","P/E over 70 \u2014 priced for spectacular growth"],["Reputation","'Most Innovative Company' six years running"],["The earnings","Reported booming, ever-rising profits"]],
+  context:"A Wall Street darling \u2014 beloved by analysts, wildly innovative, profits climbing every quarter, priced at 70+ times earnings. Pay up for the best?",
+  q:"Your read on Enron in 2000?",
+  read:"The checklist asks: are the earnings real and durable? Enron's profits rose suspiciously smoothly, its business was famously hard to explain, and it was priced for perfection. When numbers look too good and no one can say how the money is made, that's the moment to check the books \u2014 not to pay up.",
+  outcome:"The earnings were fabricated \u2014 inflated by accounting tricks and thousands of shell entities hiding ~$25B in debt. Enron fell under $1 and filed the largest U.S. bankruptcy at the time, in December 2001.",
+  lesson:"Fake earnings are the deadliest trap \u2014 a high price on fake profits collapses to nothing. Smooth, unexplainable numbers deserve suspicion, not a premium."},
+
+ {co:"Walmart", yr:"early 1980s", tag:"Looked expensive", correct:1,
+  snapshot:[["Multiple","Often 30x+ earnings \u2014 'too expensive' by the simple rule"],["Growth","Profits compounding ~30% a year as it expanded"],["The moat","A relentless low-cost scale edge rivals couldn't match"],["The doubt","Value investors kept passing: 'great company, but too pricey'"]],
+  context:"A fast-growing retailer at a rich multiple. By the plain '15x is fair' rule it looked expensive, and disciplined value investors kept passing on it. Too pricey?",
+  q:"Your read on Walmart in the early 1980s?",
+  read:"The checklist reframes the price: 30x isn't expensive for a business growing ~30% a year behind a durable, widening moat (a PEG near 1). The multiple only looks high next to a slow business \u2014 next to that growth and durability, it was fair, even cheap. (Contrast Cisco: there, ~200x was far beyond what the growth could justify.)",
+  outcome:"Walmart split its stock 2-for-1 eleven times and became one of the great compounders in history \u2014 a single 1970 share grew into thousands. Those who passed as 'too expensive' missed enormous gains.",
+  lesson:"A high multiple isn't automatically 'expensive.' Growth and durability can justify it \u2014 the skill is telling a fair premium (Walmart) from an absurd one (Cisco)."}
+];
+
+let caseIdx=null;
+function showCaseMap(){
+  ["start","game","end","campaign","levelIntro","evalMap","evalIntro","evalPlay","evalBridge","evalEnd","casePlay"].forEach(id=>$(id)&&$(id).classList.add("hidden"));
+  $("caseFiles").classList.remove("hidden");
+  const list=$("caseList"); list.innerHTML="";
+  CASES.forEach((c,i)=>{
+    const row=document.createElement("button"); row.className="level-row open";
+    row.innerHTML="<span class=\"lv-num\">\uD83D\uDCC1</span><span class=\"lv-name\">"+c.co+"</span><span class=\"lv-goal\">"+c.yr+" \u00B7 "+c.tag+"</span>";
+    row.onclick=()=>openCase(i); list.appendChild(row);
+  });
+}
+function openCase(i){
+  caseIdx=i; const c=CASES[i];
+  ["start","caseFiles","casePlay"].forEach(id=>$(id).classList.add("hidden"));
+  $("casePlay").classList.remove("hidden");
+  $("caseTag").textContent="\uD83D\uDCC1 Case "+(i+1)+" of "+CASES.length;
+  $("caseCo").textContent="REAL HISTORY";
+  $("caseCard").innerHTML="<div class=\"evc-name\">"+c.co+"</div><div class=\"case-yr\">"+c.yr+" \u00B7 "+c.tag+"</div><div class=\"case-snap\">"+c.snapshot.map(r=>"<div class=\"cs-row\"><span class=\"cs-k\">"+r[0]+"</span><span class=\"cs-v\">"+r[1]+"</span></div>").join("")+"</div><div class=\"case-ctx\">"+c.context+"</div>";
+  $("casePrompt").textContent=c.q;
+  $("caseReveal").classList.add("hidden"); $("caseNext").classList.add("hidden");
+  const box=$("caseChoices"); box.className="ev-choices"; box.innerHTML="";
+  CASE_OPTIONS.forEach((opt,idx)=>{ const b=document.createElement("button"); b.className="ev-choice"; b.textContent=opt; b.onclick=()=>casePick(idx); box.appendChild(b); });
+}
+function casePick(idx){
+  const c=CASES[caseIdx], ok=idx===c.correct;
+  if(ok){ sndWin(); confetti(16); } else sndLose();
+  profile.xp=(profile.xp||0)+(ok?30:15); saveProfile(profile);
+  $("caseChoices").innerHTML="";
+  const r=$("caseReveal"); r.className="ev-reveal "+(ok?"good":"bad");
+  r.innerHTML="<div class=\"rv-head\">"+(ok?"Your read matches the disciplined call.":"Disciplined read: \u201C"+CASE_OPTIONS[c.correct]+"\u201D")+"</div><div class=\"case-read\"><b>The disciplined read:</b> "+c.read+"</div><div class=\"case-outcome\"><b>What actually happened:</b> "+c.outcome+"</div><div class=\"case-lesson\">"+c.lesson+"</div>";
+  r.classList.remove("hidden");
+  $("caseNext").textContent = caseIdx===CASES.length-1?"Back to cases":"Next case";
+  $("caseNext").classList.remove("hidden");
+}
+function caseNext(){ if(caseIdx>=CASES.length-1){ showCaseMap(); return; } openCase(caseIdx+1); }
 
 renderRankbar('rankbar'); selectDiff('auto');
 ['touchend','pointerdown','click'].forEach(ev=>document.addEventListener(ev, unlockAudio, {passive:true}));
