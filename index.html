@@ -327,7 +327,7 @@
     </div>
     <button class="start-btn" onclick="showCampaignMap()">Campaign</button>
     <button class="start-btn secondary" onclick="showEvalMap()">The Evaluator · Stage 2</button>
-    <button class="start-btn secondary" onclick="showEngMap()">The Engine Room · Stage 3</button>
+    <button class="start-btn secondary" onclick="showEngMap()">Beneath the Bloom · Stage 3</button>
     <button class="start-btn secondary" onclick="showCaseMap()">Case Files · Real History</button>
     <button class="start-btn secondary" onclick="startGame()">Open Play</button>
     <p class="foot">Prototype · tap 🔊 for sound · your feedback shapes it</p>
@@ -424,8 +424,8 @@
 
   <section id="engMap" class="panel hidden">
     <div class="flower-hero">Stage 3</div>
-    <h1 class="camp-h1">The Engine Room</h1>
-    <p class="lede small">Under the hood: where earnings come from, what debt does, what returns are made of, and why time wins.</p>
+    <h1 class="camp-h1">Beneath the Bloom</h1>
+    <p class="lede small">The mania traded the flower — the value was always in the bulb. Dig under the price: where earnings come from, what debt does, what returns are made of, and why time wins.</p>
     <div class="level-list" id="engList"></div>
     <button class="start-btn secondary" onclick="backToStart()">Back</button>
   </section>
@@ -2155,7 +2155,7 @@ function showEngIntro(i){
   ["engMap","engPlay","engEnd"].forEach(id=>$(id).classList.add("hidden"));
   $("engIntro").classList.remove("hidden");
   const L=ENG_LEVELS[i];
-  $("enNum").textContent="Engine Room \u00B7 Part "+(i+1);
+  $("enNum").textContent="Beneath the Bloom \u00B7 Part "+(i+1);
   $("enTitle").textContent=L.t; $("enTeach").textContent=L.teach;
   $("enGoal").innerHTML="\uD83C\uDFAF "+L.goalLabel;
   $("enStart").onclick=()=>startEng(i);
@@ -2282,7 +2282,7 @@ function endEng(){
   const hasNext=engL+1<ENG_LEVELS.length; let btns="";
   if(won && hasNext) btns+="<button class=\"start-btn\" onclick=\"showEngIntro("+(engL+1)+")\">Next part \u2192</button>";
   else if(!won) btns+="<button class=\"start-btn\" onclick=\"startEng("+engL+")\">Retry</button>";
-  btns+="<button class=\"start-btn secondary\" onclick=\"showEngMap()\">"+(won&&!hasNext?"\u2605 Engine Room complete":"Engine Room map")+"</button>";
+  btns+="<button class=\"start-btn secondary\" onclick=\"showEngMap()\">"+(won&&!hasNext?"\u2605 Beneath the Bloom \u2014 complete":"Back to the bulb")+"</button>";
   $("engEndActions").innerHTML=btns;
   if(won){ confetti(60); sndStreak(2); }
 }
