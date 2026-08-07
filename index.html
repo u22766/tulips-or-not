@@ -1107,19 +1107,85 @@ const SURFACE={
   "Verdant Foods":"A trendy 'it' brand everyone assumes is a passing fad.",
   "Old Dominion Mills":"A dusty old-economy maker everyone's written off."
 };
-function rptEarnings(inst){ return inst.hasEps ? ('Earns $'+inst.eps.toFixed(2)+'/share — that\u2019s '+inst.pe+'\u00D7 the price.') : 'No real earnings. Nothing to value it on.'; }
+/* Deterministic per-card variety: same card always reads the same, siblings differ. */
+function nameHash(n){ let h=0; for(let i=0;i<n.length;i++){ h=(h*31+n.charCodeAt(i))>>>0; } return h; }
+function varOf(inst,pool,salt){ return pool[(nameHash(inst.name)+ (salt||0)) % pool.length]; }
+const RPT={
+  noEarn:[
+    'No real earnings. Nothing to value it on.',
+    'It has never turned a profit — there\u2019s no number to anchor the price.',
+    'Losses every year. The price rests on the story alone.',
+    'Zero profit to date — you\u2019d be paying for a promise.',
+    'Still burning cash: nothing earned, nothing to measure the price against.'
+  ],
+  moatReal:[
+    'A durable, real business with genuine demand and a real edge.',
+    'Customers keep coming back — rivals have failed to dent it.',
+    'A defensible position: switching away from it is costly or pointless.',
+    'Demand is steady and the competition can\u2019t easily copy it.',
+    'The franchise looks intact — pricing power and loyal demand.',
+    'A real moat: its position gets harder to attack every year.'
+  ],
+  moatDecline:[
+    'Its market is structurally shrinking — demand is moving away.',
+    'Every year a few more of its customers leave and don\u2019t come back.',
+    'The world is drifting away from what it sells — slowly, then surely.',
+    'Its core customers are aging out and no new ones are arriving.',
+    'Competitors with a newer model are draining its demand for good.',
+    'The decline isn\u2019t a rough patch — the whole category is fading.'
+  ],
+  moatFraud:[
+    'Looks strong on the surface — big, fast-rising numbers.',
+    'The headline momentum is impressive; the outlook reads flawless.',
+    'On paper the trajectory looks unstoppable.',
+    'Analysts see nothing but growth ahead — almost suspiciously smooth.'
+  ],
+  moatHollow:[
+    'No real business underneath — it\u2019s running on story and momentum.',
+    'Strip away the buzz and there\u2019s no durable demand under it.',
+    'Attention is the only thing it reliably produces.',
+    'The excitement is real; the underlying business isn\u2019t.',
+    'It\u2019s a narrative with a ticker — momentum in, momentum out.'
+  ],
+  booksFraud:[
+    'The numbers look too smooth and perfect to be real.',
+    'Every quarter lands exactly on target — real businesses are lumpier than this.',
+    'The cash the books claim doesn\u2019t match what the business could produce.',
+    'Auditors\u2019 footnotes hint at entries that don\u2019t add up.',
+    'Revenue is booked in ways that don\u2019t survive a close read.'
+  ],
+  booksDecline:[
+    'Profitable for now — but earnings are quietly slipping.',
+    'Margins thin a little more each year — the trend line points down.',
+    'Cash still comes in, but less of it every year.',
+    'Each year\u2019s profit is a bit smaller than the last. That\u2019s the tell.'
+  ],
+  booksHollow:[
+    'Nothing shady in the books — but nothing underneath, either.',
+    'Honest accounting of ongoing losses.',
+    'Clean books, red ink: it truthfully reports that it makes nothing.',
+    'No tricks here — the losses are exactly as real as they look.'
+  ],
+  booksReal:[
+    'Books look clean and healthy.',
+    'Conservative accounting, steady cash — nothing hiding here.',
+    'Profits match the cash coming in. Solid.',
+    'A boring, trustworthy ledger — exactly what you want.'
+  ]
+};
+function rptEarnings(inst){ return inst.hasEps ? ('Earns $'+inst.eps.toFixed(2)+'/share — that\u2019s '+inst.pe+'\u00D7 the price.') : varOf(inst,RPT.noEarn); }
 function rptMoat(inst){
-  if(inst.kind==='real') return 'A durable, real business with genuine demand and a real edge.';
-  if(inst.kind==='declining') return 'Its market is structurally shrinking — demand is moving away.';
-  if(inst.fraud) return 'Looks strong on the surface — big, fast-rising numbers.';
-  return 'No real business underneath — it\u2019s running on story and momentum.';
+  if(inst.kind==='real') return varOf(inst,RPT.moatReal);
+  if(inst.kind==='declining') return varOf(inst,RPT.moatDecline);
+  if(inst.fraud) return varOf(inst,RPT.moatFraud);
+  return varOf(inst,RPT.moatHollow);
 }
 function rptBooks(inst){
-  if(inst.fraud) return 'The numbers look too smooth and perfect to be real.';
+  if(inst.fraud) return varOf(inst,RPT.booksFraud);
   if(inst.div) return 'The dividend pays out more than the company actually earns.';
-  if(inst.kind==='declining') return 'Profitable for now — but earnings are quietly slipping.';
-  if(inst.kind==='hollow') return 'Nothing shady in the books — but nothing underneath, either.';
-  return 'Books look clean and healthy.';
+  if(inst.kind==='declining') return varOf(inst,RPT.booksDecline);
+  if(inst.kind==='hollow') return varOf(inst,RPT.booksHollow);
+  return varOf(inst,RPT.booksReal);
 }
 
 function rint(lo,hi){ if(hi<lo) hi=lo; return lo+Math.floor(Math.random()*(hi-lo+1)); }
@@ -1156,23 +1222,70 @@ function makeInstance(b, hard){
   return inst;
 }
 
+const WRONGS={
+  realFair:[
+    "It's cheap, so something must be wrong with it.",
+    "Too boring to bother owning.",
+    "Slow and steady never beats the hot names.",
+    "If it were any good, it wouldn't be this cheap.",
+    "I'd rather wait for something more exciting.",
+    "Unloved stocks stay unloved forever."
+  ],
+  realRich:[
+    "It's a great company, so the price doesn't matter.",
+    "Everyone loves it, so any price is safe.",
+    "Quality this good can never be overpaid for.",
+    "It always goes up — buy at any price.",
+    "The best businesses are worth whatever they cost.",
+    "You can't lose money on a market leader."
+  ],
+  declining:[
+    "A famous name at a low price is a bargain.",
+    "The dividend or price makes it safe.",
+    "It's been around forever — it'll bounce back.",
+    "This cheap, the bad news must be priced in.",
+    "Great brands always recover eventually.",
+    "Someone will buy it out at a premium.",
+    "It's survived downturns before; it'll survive this."
+  ],
+  hollow:[
+    "It's climbing, so I should get in.",
+    "A big name or story makes it safe.",
+    "Everyone's buying — the crowd can't be wrong.",
+    "Get in before it's too late.",
+    "The chart only goes up.",
+    "This time it really is different.",
+    "Smart money is already in — follow it."
+  ]
+};
 function buildReasons(inst){
-  let correct, wrong;
+  let correct, pool;
   if(inst.kind==='real' && !inst.overpriced){
-    correct="A solid business at a fair price for what it earns.";
-    wrong=["It's cheap, so something must be wrong with it.","Too boring to bother owning."];
+    correct=varOf(inst,[
+      "A solid business at a fair price for what it earns.",
+      "Real earnings, durable demand, sensible price — that's the whole formula.",
+      "The price is backed by what it actually earns.",
+      "Good business, reasonable multiple — nothing more needed.",
+      "Paying a fair price for real, lasting profits."
+    ]);
+    pool=WRONGS.realFair;
   } else if(inst.kind==='real' && inst.overpriced){
-    correct="A good business — but the price is far above what it earns.";
-    wrong=["It's a great company, so the price doesn't matter.","Everyone loves it, so any price is safe."];
+    correct=varOf(inst,[
+      "A good business — but the price is far above what it earns.",
+      "Love the company; the price already assumes perfection.",
+      "Great business, wrong price — the multiple is the problem.",
+      "Quality is real, but this price borrows years of future growth.",
+      "At this multiple, even great news is already paid for."
+    ]);
+    pool=WRONGS.realRich;
   } else if(inst.kind==='declining'){
-    correct=inst.right;
-    wrong=["A famous name at a low price is a bargain.","The dividend or price makes it safe."];
+    correct=inst.right; pool=WRONGS.declining;
   } else {
-    correct=inst.right;
-    wrong=["It's climbing, so I should get in.","A big name or story makes it safe."];
+    correct=inst.right; pool=WRONGS.hollow;
   }
+  const h=nameHash(inst.name), w1=pool[h%pool.length], w2=pool[(h+3)%pool.length]===w1?pool[(h+1)%pool.length]:pool[(h+3)%pool.length];
   curReason=correct;
-  return shuffle([{t:correct,ok:true},{t:wrong[0],ok:false},{t:wrong[1],ok:false}]);
+  return shuffle([{t:correct,ok:true},{t:w1,ok:false},{t:w2,ok:false}]);
 }
 
 function correctCalls(inst){
