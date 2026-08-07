@@ -327,6 +327,7 @@
     </div>
     <button class="start-btn" onclick="showCampaignMap()">Campaign</button>
     <button class="start-btn secondary" onclick="showEvalMap()">The Evaluator · Stage 2</button>
+    <button class="start-btn secondary" onclick="showEngMap()">The Engine Room · Stage 3</button>
     <button class="start-btn secondary" onclick="showCaseMap()">Case Files · Real History</button>
     <button class="start-btn secondary" onclick="startGame()">Open Play</button>
     <p class="foot">Prototype · tap 🔊 for sound · your feedback shapes it</p>
@@ -419,6 +420,39 @@
     <div class="ev-choices" id="caseChoices"></div>
     <div class="ev-reveal hidden" id="caseReveal"></div>
     <button class="next hidden" id="caseNext" onclick="caseNext()">Next case</button>
+  </section>
+
+  <section id="engMap" class="panel hidden">
+    <div class="flower-hero">Stage 3</div>
+    <h1 class="camp-h1">The Engine Room</h1>
+    <p class="lede small">Under the hood: where earnings come from, what debt does, what returns are made of, and why time wins.</p>
+    <div class="level-list" id="engList"></div>
+    <button class="start-btn secondary" onclick="backToStart()">Back</button>
+  </section>
+
+  <section id="engIntro" class="panel hidden">
+    <div class="flower-hero" id="enNum"></div>
+    <h1 class="camp-h1" id="enTitle"></h1>
+    <p class="lede" id="enTeach"></p>
+    <div class="li-goal" id="enGoal"></div>
+    <button class="start-btn" id="enStart">Start</button>
+    <button class="start-btn secondary" onclick="showEngMap()">Back</button>
+  </section>
+
+  <section id="engPlay" class="hidden">
+    <div class="ev-top"><span class="ev-progress" id="engProgress"></span><span class="ev-score" id="engScore"></span></div>
+    <div class="ev-card" id="engCard"></div>
+    <div class="ev-prompt" id="engPrompt"></div>
+    <div class="ev-choices" id="engChoices"></div>
+    <div class="ev-reveal hidden" id="engReveal"></div>
+    <button class="next hidden" id="engNext" onclick="engNext()">Next</button>
+  </section>
+
+  <section id="engEnd" class="panel hidden">
+    <div class="flower-hero">Stage complete</div>
+    <div class="lr-badge" id="engEndBadge"></div>
+    <p class="persona-note" id="engEndNote"></p>
+    <div id="engEndActions"></div>
   </section>
 
   <section id="game" class="hidden">
@@ -1416,7 +1450,7 @@ function startLevel(i){
   beginSession({flags:Object.assign({},L.flags), scouts:L.flags.scout?2:3, len:L.len, events:evCount, twist:0.25, borderline:L.borderline, kinds:L.kinds, impostors:L.flags.impostors});
 }
 function clearedLevel(){ return (profile.campaignCleared==null)?-1:profile.campaignCleared; }
-function backToStart(){ ['campaign','game','end','levelIntro','evalMap','evalIntro','evalPlay','evalBridge','evalEnd','caseFiles','casePlay'].forEach(id=>$(id).classList.add('hidden')); $('start').classList.remove('hidden'); renderRankbar('rankbar'); }
+function backToStart(){ ['campaign','game','end','levelIntro','evalMap','evalIntro','evalPlay','evalBridge','evalEnd','caseFiles','casePlay','engMap','engIntro','engPlay','engEnd'].forEach(id=>$(id).classList.add('hidden')); $('start').classList.remove('hidden'); renderRankbar('rankbar'); }
 function showCampaignMap(){
   ['start','game','end','levelIntro'].forEach(id=>$(id).classList.add('hidden'));
   $('campaign').classList.remove('hidden');
@@ -2035,6 +2069,223 @@ function casePick(idx){
   $("caseNext").classList.remove("hidden");
 }
 function caseNext(){ if(caseIdx>=CASES.length-1){ showCaseMap(); return; } openCase(caseIdx+1); }
+
+
+/* ============ STAGE 3: THE ENGINE ROOM ============ */
+const ENG_LEVELS=[
+ {type:"machine", t:"The Money Machine",
+  teach:"Every business is a machine: it sells something for a price that cost something to make. Profit lives in that gap \u2014 the margin. Read the machine before you read the stock.",
+  goalLabel:"Read 6 of 8 machines right", rounds:8, goal:6},
+ {type:"debt", t:"Two Machines, One Loaded With Debt",
+  teach:"Debt doesn\u2019t change what a business earns \u2014 it changes who gets paid first. Interest is owed in good years and bad. The same machine with heavy debt is a different risk.",
+  goalLabel:"Pick the survivor 6 of 8 times", rounds:8, goal:6},
+ {type:"return", t:"Where Did the Return Come From?",
+  teach:"Every stock return has just three engines: the earnings grew, the multiple people pay changed, or dividends were paid. Learn to see which engine did the work \u2014 and which can reverse.",
+  goalLabel:"Trace 6 of 8 returns", rounds:8, goal:6},
+ {type:"compound", t:"The Arithmetic of Patience",
+  teach:"Compounding is the quiet engine that dwarfs the others \u2014 but only over time. A few percent and a few decades change everything. Get the arithmetic into your bones.",
+  goalLabel:"Get 6 of 8 right", rounds:8, goal:6}
+];
+
+const ENG_NAMES=["Copperkettle Coffee","Brightpath Tutoring","Summit Bikes","Harborline Ferries","Quickstitch Apparel","Greenfield Grocers","Ironwood Furniture","Skylark Airlines","Pixel Palace Arcade","Bluecrest Bottling","Cedarform Cabinets","Lanternlight Books"];
+const ENG_TRENDS=[
+ {t:"Costs are falling as it scales, while prices hold steady.",better:true},
+ {t:"It raises prices a little each year \u2014 and customers stay.",better:true},
+ {t:"A cheaper supplier just cut its input costs.",better:true},
+ {t:"Prices are stuck while costs creep up every year.",better:false},
+ {t:"Rivals force it to discount deeper every season.",better:false},
+ {t:"Its main ingredient keeps getting more expensive.",better:false}
+];
+
+const ENG3=[
+ {name:"Sprintline Software", line:"A software leader over 10 years.", eps0:1.00, eps1:4.00, pe0:20, pe1:22, div:0.5,
+  driver:"earnings", why:"Earnings quadrupled (\u00D74.0) while the multiple barely moved (20\u00D7\u219222\u00D7) and dividends were small. Nearly all of this return was engine #1: the business itself earning more."},
+ {name:"Gigagrid Networks", line:"A beloved tech giant bought at the mania's peak.", eps0:1.00, eps1:2.20, pe0:150, pe1:15, div:0,
+  driver:"multiple", why:"The business more than doubled its earnings \u2014 and buyers still lost ~78%, because the multiple collapsed from 150\u00D7 to 15\u00D7. The multiple engine ran in reverse and overwhelmed everything. Being right about the company wasn\u2019t enough."},
+ {name:"Dockside Industrial", line:"An unloved industrial that got noticed.", eps0:2.00, eps1:2.20, pe0:8, pe1:20, div:1.0,
+  driver:"multiple", why:"Earnings barely moved (\u00D71.1) \u2014 but the market re-rated it from 8\u00D7 to 20\u00D7 (\u00D72.5). This return came from the multiple engine: cheap simply became less cheap. Powerful \u2014 but it can only happen once."},
+ {name:"Anchor Utilities", line:"A steady utility held for the payout.", eps0:3.00, eps1:3.10, pe0:12, pe1:12, div:15.0,
+  driver:"dividends", why:"Earnings and multiple both sat still \u2014 the price barely moved. But $15 of dividends on a $36 purchase is a ~42% return in cash. Engine #3 did all the work here: you were paid to hold."},
+ {name:"Fadefast Retail", line:"A famous retailer that kept looking cheap.", eps0:2.00, eps1:0.80, pe0:10, pe1:9, div:1.0,
+  driver:"earnings", why:"The multiple barely changed \u2014 the earnings themselves collapsed (\u00D70.4). The earnings engine ran in reverse: this is what a value trap looks like in the numbers. The 'cheap' multiple was measuring a melting E."},
+ {name:"Millbrook Foods", line:"A quality compounder bought at a fair price.", eps0:2.00, eps1:5.00, pe0:14, pe1:18, div:2.0,
+  driver:"earnings", why:"All three engines pulled together \u2014 but earnings did the heavy lifting (\u00D72.5) versus the multiple\u2019s \u00D71.3. That\u2019s the healthiest kind of return: mostly engine #1, with a modest re-rating on top."},
+ {name:"Skyhawk Devices", line:"A hot gadget maker bought in a frenzy.", eps0:1.50, eps1:2.70, pe0:45, pe1:18, div:0,
+  driver:"multiple", why:"Earnings grew a healthy \u00D71.8 \u2014 but the multiple fell from 45\u00D7 to 18\u00D7 (\u00D70.4), so the price still dropped ~28%. When you overpay, the multiple engine works against you even while the business succeeds."},
+ {name:"Granary Mills", line:"A steady food producer, decade in, decade out.", eps0:2.50, eps1:4.00, pe0:15, pe1:15, div:3.0,
+  driver:"earnings", why:"The multiple never moved \u2014 15\u00D7 in, 15\u00D7 out. Earnings grew \u00D71.6 and dividends added a steady bonus. A textbook 'boring' return: engine #1 plus engine #3, no drama."}
+];
+
+const ENGC=[
+ {q:"Your money grows at 8% a year. Roughly how long until it doubles?", opts:["About 4 years","About 9 years","About 18 years"], correct:1,
+  why:"The rule of 72: divide 72 by the growth rate. 72 \u00F7 8 \u2248 9 years to double. It\u2019s the fastest mental math in investing."},
+ {q:"At 10% a year, how long to double?", opts:["About 7 years","About 12 years","About 20 years"], correct:0,
+  why:"72 \u00F7 10 \u2248 7 years. At a good growth rate, money doubles surprisingly fast \u2014 and each double is bigger than the last."},
+ {q:"$1,000 growing at 7% a year for 40 years becomes roughly\u2026", opts:["$2,800","$7,500","$15,000"], correct:2,
+  why:"About $15,000 \u2014 1.07 compounded 40 times is \u00D715. Not $1,000 + 40\u00D7$70: compounding grows the growth, and most of it arrives in the final decade."},
+ {q:"Two savers invest $1,000 once, for 30 years \u2014 one earns 6%, the other 10%. The 10% saver ends with\u2026", opts:["A bit more","About 50% more","About 3\u00D7 as much"], correct:2,
+  why:"6% \u2192 ~$5,700. 10% \u2192 ~$17,400 \u2014 about 3\u00D7 as much. A few percent of extra return, compounded for decades, isn\u2019t a few percent of extra wealth. It\u2019s multiples."},
+ {q:"Two people invest $5,000 a year at 8% until 65. One starts at 25, one at 35. The early starter ends with\u2026", opts:["About 20% more","More than double","About the same"], correct:1,
+  why:"Roughly $1.3M vs $0.57M \u2014 more than double, from just ten extra years. The first decade isn\u2019t 25% of the result; it\u2019s the seed for every double that follows. Starting beats timing."},
+ {q:"A holding falls 50%. What gain does it need just to get back to even?", opts:["50%","75%","100%"], correct:2,
+  why:"A 50% loss needs a 100% gain to recover \u2014 from $100 to $50 and back requires doubling. Losses are asymmetric: this is why avoiding disasters matters more than catching winners."},
+ {q:"Same fund, but one version charges 1% more in yearly fees. Over 40 years, that 1% costs you roughly\u2026", opts:["About 5% of your final wealth","About a third of your final wealth","Almost nothing"], correct:1,
+  why:"7% \u2192 \u00D715; 6% \u2192 \u00D710. The 1% fee eats about a third of your final wealth, because the fee compounds against you every single year. Small drags, huge tolls."},
+ {q:"A business doubles its earnings every 7 years. In 35 years, earnings are\u2026", opts:["About 5\u00D7 bigger","About 10\u00D7 bigger","About 32\u00D7 bigger"], correct:2,
+  why:"Five doublings: 2\u00D72\u00D72\u00D72\u00D72 = 32\u00D7. Compounding is multiplication, not addition \u2014 which is why patient holders of quality get results that look impossible."}
+];
+
+let engL=null, engRound=0, engScoreN=0, engHand=[], engStep=0, engAns={};
+function engCleared(){ return profile.engineCleared==null?-1:profile.engineCleared; }
+
+function showEngMap(){
+  ["start","game","end","campaign","levelIntro","evalMap","evalIntro","evalPlay","evalBridge","evalEnd","caseFiles","casePlay","engIntro","engPlay","engEnd"].forEach(id=>$(id)&&$(id).classList.add("hidden"));
+  $("engMap").classList.remove("hidden");
+  const cleared=engCleared(), list=$("engList"); list.innerHTML="";
+  ENG_LEVELS.forEach((L,i)=>{
+    const unlocked=i<=cleared+1, done=i<=cleared;
+    const row=document.createElement("button");
+    row.className="level-row "+(done?"done":unlocked?"open":"locked"); row.disabled=!unlocked;
+    row.innerHTML="<span class=\"lv-num\">"+(done?"\u2714":unlocked?(i+1):"\uD83D\uDD12")+"</span><span class=\"lv-name\">"+L.t+"</span><span class=\"lv-goal\">"+L.goalLabel+"</span>";
+    if(unlocked) row.onclick=()=>showEngIntro(i);
+    list.appendChild(row);
+  });
+}
+function showEngIntro(i){
+  ["engMap","engPlay","engEnd"].forEach(id=>$(id).classList.add("hidden"));
+  $("engIntro").classList.remove("hidden");
+  const L=ENG_LEVELS[i];
+  $("enNum").textContent="Engine Room \u00B7 Part "+(i+1);
+  $("enTitle").textContent=L.t; $("enTeach").textContent=L.teach;
+  $("enGoal").innerHTML="\uD83C\uDFAF "+L.goalLabel;
+  $("enStart").onclick=()=>startEng(i);
+}
+function startEng(i){
+  engL=i; engScoreN=0; engRound=0; engStep=0; engAns={};
+  const L=ENG_LEVELS[i];
+  if(L.type==="machine"){
+    const names=shuffle(ENG_NAMES.slice());
+    engHand=[];
+    for(let k=0;k<L.rounds;k++){
+      const price=rint(8,60);
+      const m=pick([-35,-25,-20,20,28,36,44]);
+      const cost=Math.max(1,Math.round(price*(1-m/100)));
+      const tr=pick(ENG_TRENDS);
+      engHand.push({name:names[k%names.length], price:price, cost:cost, profit:price-cost, profitable:price>cost, trend:tr});
+    }
+  } else if(L.type==="debt"){
+    const pairs=shuffle(ENG_NAMES.slice());
+    engHand=[];
+    for(let k=0;k<L.rounds;k++){
+      const op=pick([80,100,120,160]);
+      const shock=pick([0.5,0.45,0.55]);
+      const safeInt=Math.round(op*pick([0.10,0.15,0.20]));
+      const riskyInt=Math.round(op*pick([0.65,0.75,0.85]));
+      engHand.push({a:pairs[(2*k)%pairs.length], b:pairs[(2*k+1)%pairs.length], op:op, shock:shock, safeInt:safeInt, riskyInt:riskyInt, safeLeft:Math.random()<0.5});
+    }
+  } else if(L.type==="return"){
+    engHand=shuffle(ENG3.slice()).slice(0,L.rounds);
+  } else {
+    engHand=shuffle(ENGC.slice()).slice(0,L.rounds);
+  }
+  ["start","game","end","campaign","levelIntro","evalMap","evalIntro","evalPlay","evalBridge","evalEnd","caseFiles","casePlay","engMap","engIntro","engEnd"].forEach(id=>$(id)&&$(id).classList.add("hidden"));
+  $("engPlay").classList.remove("hidden");
+  renderEngRound();
+}
+function engBtns(labels, cb){
+  const box=$("engChoices"); box.className="ev-choices"; box.innerHTML="";
+  labels.forEach((l,i)=>{ const b=document.createElement("button"); b.className="ev-choice"; b.textContent=l; b.onclick=()=>cb(i,l); box.appendChild(b); });
+}
+function renderEngRound(){
+  const L=ENG_LEVELS[engL];
+  $("engProgress").textContent="Q "+(engRound+1)+" of "+L.rounds;
+  $("engScore").textContent=engScoreN+" / "+L.goal+" to pass";
+  $("engReveal").classList.add("hidden"); $("engNext").classList.add("hidden");
+  engStep=0; engAns={};
+  if(L.type==="machine") renderMachine();
+  else if(L.type==="debt") renderDebt();
+  else if(L.type==="return") renderReturn();
+  else renderCompound();
+}
+function renderMachine(){
+  const c=engHand[engRound];
+  $("engCard").innerHTML="<div class=\"evc-name\">"+c.name+"</div><div class=\"evc-desc\">Sells its product for <b>$"+c.price+"</b>. Making and delivering each one costs <b>$"+c.cost+"</b>.</div><div class=\"evc-metric\">"+c.trend.t+"</div>";
+  if(engStep===0){
+    $("engPrompt").textContent="First: does each sale make money?";
+    engBtns(["Makes money on each sale","Loses money on each sale"],(i)=>{ engAns.p=(i===0); engStep=1; renderMachine(); });
+  } else {
+    $("engPrompt").textContent="And given that trend \u2014 is this machine getting stronger or weaker?";
+    engBtns(["Getting stronger","Getting weaker"],(i)=>{
+      const dirOk=(i===0)===c.trend.better, pOk=engAns.p===c.profitable, ok=dirOk&&pOk;
+      const marg=c.price-c.cost, mp=Math.round(marg/c.price*100);
+      engReveal(ok,"<div class=\"rv-head\">"+(ok?"Right":"Not quite")+"</div>Each sale "+(c.profitable?("<b>makes $"+marg+"</b> (a "+mp+"% margin)"):("<b>loses $"+Math.abs(marg)+"</b> ("+mp+"% margin)"))+" \u2014 and with that trend, the machine is <b>getting "+(c.trend.better?"stronger":"weaker")+"</b>. "+(c.profitable?"Profit per sale is where all earnings begin.":"No volume fixes a machine that loses money on every unit \u2014 scale just loses it faster.")+(pOk?"":" (You read the margin backwards.)"));
+    });
+  }
+}
+function renderDebt(){
+  const c=engHand[engRound];
+  const safe={n:c.a,int:c.safeInt}, risky={n:c.b,int:c.riskyInt};
+  const left=c.safeLeft?safe:risky, right=c.safeLeft?risky:safe;
+  $("engCard").innerHTML="<div class=\"ev-both-note\">Identical operations: each earns <b>$"+c.op+"M</b> a year before interest. The only difference is the debt they carry.</div>";
+  $("engPrompt").textContent="A downturn cuts operating profit "+(Math.round(c.shock*100))+"% \u2014 to $"+Math.round(c.op*(1-c.shock))+"M. Whose owners are safer?";
+  const box=$("engChoices"); box.className="ev-choices ev-versus"; box.innerHTML="";
+  [left,right].forEach(co=>{
+    const isSafe=(co===safe);
+    const btn=document.createElement("button"); btn.className="ev-mini";
+    btn.innerHTML="<div class=\"m-name\">"+co.n+"</div><div class=\"m-desc\">Earns $"+c.op+"M before interest.<br>Owes <b>$"+co.int+"M</b> in interest every year \u2014 no matter what.</div><div class=\"m-mult\">interest: $"+co.int+"M/yr</div>";
+    btn.onclick=()=>{
+      const after=Math.round(c.op*(1-c.shock));
+      engReveal(isSafe,"<div class=\"rv-head\">"+(isSafe?"Right":"That\u2019s the leveraged one")+"</div>After the downturn both earn <b>$"+after+"M</b>. <b>"+safe.n+"</b> still covers its $"+safe.int+"M interest with room to spare. <b>"+risky.n+"</b> owes $"+risky.int+"M \u2014 more than it now earns \u2014 so its owners face dilution, fire sales, or bankruptcy. Debt didn\u2019t change the business; it changed who survives the bad year. Leverage magnifies both directions \u2014 and the downside gets a veto.");
+    };
+    box.appendChild(btn);
+  });
+}
+function renderReturn(){
+  const c=engHand[engRound];
+  const p0=Math.round(c.eps0*c.pe0*100)/100, p1=Math.round(c.eps1*c.pe1*100)/100;
+  $("engCard").innerHTML="<div class=\"evc-name\">"+c.name+"</div><div class=\"evc-desc\">"+c.line+"</div><div class=\"case-snap\">"
+   +"<div class=\"cs-row\"><span class=\"cs-k\">Bought at</span><span class=\"cs-v\">$"+p0+"  ($"+c.eps0.toFixed(2)+" earnings \u00D7 "+c.pe0+"\u00D7)</span></div>"
+   +"<div class=\"cs-row\"><span class=\"cs-k\">10 years later</span><span class=\"cs-v\">$"+p1+"  ($"+c.eps1.toFixed(2)+" earnings \u00D7 "+c.pe1+"\u00D7)</span></div>"
+   +"<div class=\"cs-row\"><span class=\"cs-k\">Dividends collected</span><span class=\"cs-v\">$"+c.div.toFixed(2)+" per share</span></div></div>";
+  $("engPrompt").textContent="Which engine did the most work \u2014 for better or worse?";
+  engBtns(["The earnings changed","The multiple changed","The dividends"],(i)=>{
+    const map=["earnings","multiple","dividends"];
+    engReveal(map[i]===c.driver,"<div class=\"rv-head\">"+(map[i]===c.driver?"Right":"Not quite")+"</div>"+c.why);
+  });
+}
+function renderCompound(){
+  const c=engHand[engRound];
+  $("engCard").innerHTML="<div class=\"evc-desc\" style=\"font-size:16px;margin-bottom:0\">"+c.q+"</div>";
+  $("engPrompt").textContent="No calculator \u2014 reason it out.";
+  engBtns(c.opts,(i)=>{
+    engReveal(i===c.correct,"<div class=\"rv-head\">"+(i===c.correct?"Right":"Not quite")+"</div>"+c.why);
+  });
+}
+function engReveal(ok, html){
+  if(ok){ engScoreN++; sndWin(); confetti(14); } else sndLose();
+  $("engScore").textContent=engScoreN+" / "+ENG_LEVELS[engL].goal+" to pass";
+  const r=$("engReveal"); r.className="ev-reveal "+(ok?"good":"bad"); r.innerHTML=html; r.classList.remove("hidden");
+  $("engChoices").innerHTML="";
+  $("engNext").textContent = engRound===ENG_LEVELS[engL].rounds-1?"See result":"Next";
+  $("engNext").classList.remove("hidden");
+}
+function engNext(){ engRound++; if(engRound>=ENG_LEVELS[engL].rounds){ endEng(); return; } renderEngRound(); }
+function endEng(){
+  const L=ENG_LEVELS[engL], won=engScoreN>=L.goal;
+  if(won && engL>engCleared()){ profile.engineCleared=engL; }
+  const gained=Math.max(10, engScoreN*15 + (won?40:0));
+  profile.xp=(profile.xp||0)+gained; saveProfile(profile);
+  $("engPlay").classList.add("hidden"); $("engEnd").classList.remove("hidden");
+  $("engEndBadge").className="lr-badge "+(won?"win":"lose");
+  $("engEndBadge").textContent=won?"\u2714 Part Cleared":"\u2717 Not yet";
+  $("engEndNote").textContent = won ? ("You got "+engScoreN+" of "+L.rounds+" right.  +"+gained+" XP") : ("You got "+engScoreN+" of "+L.rounds+" \u2014 you need "+L.goal+". Run it again.");
+  const hasNext=engL+1<ENG_LEVELS.length; let btns="";
+  if(won && hasNext) btns+="<button class=\"start-btn\" onclick=\"showEngIntro("+(engL+1)+")\">Next part \u2192</button>";
+  else if(!won) btns+="<button class=\"start-btn\" onclick=\"startEng("+engL+")\">Retry</button>";
+  btns+="<button class=\"start-btn secondary\" onclick=\"showEngMap()\">"+(won&&!hasNext?"\u2605 Engine Room complete":"Engine Room map")+"</button>";
+  $("engEndActions").innerHTML=btns;
+  if(won){ confetti(60); sndStreak(2); }
+}
 
 renderRankbar('rankbar'); selectDiff('auto');
 ['touchend','pointerdown','click'].forEach(ev=>document.addEventListener(ev, unlockAudio, {passive:true}));
