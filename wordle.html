@@ -4,10 +4,12 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
 <meta name="theme-color" content="#131118">
+<meta name="color-scheme" content="dark">
 <title>Family Wordle</title>
 <style>
   *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
   :root{
+    color-scheme:dark;
     --bg:#131118;--surface:#1d1a26;--surface-2:#252131;--line:#2e2a3a;
     --text:#f2eee5;--muted:#8e8aa0;
     --correct:#46a171;--present:#d9a13f;--absent:#3a3646;--accent:#e2704d;
@@ -52,7 +54,7 @@
     text-transform:uppercase;border:2px solid var(--line);border-radius:8px;
     background:transparent;color:var(--text);transition:border-color .12s,background .12s;
   }
-  .tile.filled{border-color:#57506c;animation:pop .12s ease}
+  .tile.filled{border-color:#f2eee5;background:#f2eee5;color:#131118;animation:pop .12s ease}
   .tile.correct{background:var(--correct);border-color:var(--correct);color:#0d1f16}
   .tile.present{background:var(--present);border-color:var(--present);color:#241a05}
   .tile.absent{background:var(--absent);border-color:var(--absent);color:#9c96ad}
@@ -166,10 +168,10 @@
 <body>
 
 <header>
-  <div class="wordmark">
+  <a href="games.html" class="wordmark" style="text-decoration:none;color:inherit">
     <span class="eyebrow">Family Edition</span>
     <span class="title">Wordle</span>
-  </div>
+  </a>
   <div class="hdr-actions">
     <button class="hdr-btn" id="player-chip" onclick="openPlayers()">
       <span id="chip-emoji">👤</span><span id="chip-name">Player</span>

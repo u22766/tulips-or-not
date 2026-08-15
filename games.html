@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#131118">
+<meta name="color-scheme" content="dark">
+<title>Family Word Games</title>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    color-scheme:dark;
+    --bg:#131118;--surface:#1d1a26;--surface-2:#252131;--line:#2e2a3a;
+    --text:#f2eee5;--muted:#8e8aa0;--accent:#e2704d;
+    --green:#46a171;--amber:#d9a13f;--blue:#7d8cd6;
+    --serif:'Iowan Old Style','Palatino Linotype',Palatino,Georgia,serif;
+    --sans:system-ui,-apple-system,'Segoe UI',sans-serif;
+  }
+  html,body{min-height:100%}
+  body{
+    background:radial-gradient(1000px 520px at 50% -8%,#251f36 0%,transparent 62%),var(--bg);
+    color:var(--text);font-family:var(--sans);
+    display:flex;flex-direction:column;align-items:center;
+    padding:0 18px calc(28px + env(safe-area-inset-bottom));
+    -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{width:100%;max-width:520px}
+
+  /* ── Hero ── */
+  .hero{text-align:center;padding:52px 0 34px}
+  .hero .eyebrow{font-size:.6rem;font-weight:700;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--accent);margin-bottom:12px}
+  .hero h1{font-family:var(--serif);font-size:2.4rem;font-weight:600;letter-spacing:.02em;line-height:1.1;margin-bottom:12px}
+  .hero p{color:var(--muted);font-size:.9rem;line-height:1.6;max-width:360px;margin:0 auto}
+
+  /* ── Tiles teaser ── */
+  .teaser{display:flex;justify-content:center;gap:6px;margin:22px 0 0}
+  .teaser span{
+    width:34px;height:34px;border-radius:7px;display:flex;align-items:center;justify-content:center;
+    font-weight:800;font-size:.9rem;text-transform:uppercase;
+    animation:rise .5s ease both;
+  }
+  .teaser span:nth-child(1){animation-delay:.05s}
+  .teaser span:nth-child(2){animation-delay:.12s}
+  .teaser span:nth-child(3){animation-delay:.19s}
+  .teaser span:nth-child(4){animation-delay:.26s}
+  .teaser span:nth-child(5){animation-delay:.33s}
+  .t-g{background:var(--green);color:#0d1f16}
+  .t-a{background:var(--amber);color:#241a05}
+  .t-x{background:#3a3646;color:#9c96ad}
+  @keyframes rise{from{opacity:0;transform:translateY(8px)}}
+
+  /* ── Cards ── */
+  .games{display:flex;flex-direction:column;gap:14px}
+  .card{
+    display:block;text-decoration:none;color:inherit;
+    background:var(--surface);border:1px solid var(--line);border-radius:18px;
+    padding:20px 20px 18px;position:relative;overflow:hidden;
+    transition:transform .15s,border-color .15s;
+  }
+  .card:hover,.card:focus-visible{transform:translateY(-2px);border-color:var(--accent);outline:none}
+  .card:active{transform:translateY(0)}
+  .card::before{
+    content:'';position:absolute;inset:0;
+    background:radial-gradient(420px 160px at 100% 0%,var(--glow) 0%,transparent 70%);
+    opacity:.35;pointer-events:none;
+  }
+  .card.wordle{--glow:#46a171}
+  .card.duel{--glow:#7d8cd6}
+  .card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+  .card .kicker{font-size:.58rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .card h2{font-family:var(--serif);font-size:1.5rem;font-weight:600;letter-spacing:.02em}
+  .card .icon{font-size:1.9rem;line-height:1;flex:none;margin-top:2px}
+  .card p{color:var(--muted);font-size:.85rem;line-height:1.55;margin-bottom:14px}
+  .meta{display:flex;flex-wrap:wrap;gap:6px}
+  .pill{font-size:.64rem;font-weight:700;letter-spacing:.06em;padding:5px 9px;border-radius:999px;
+    background:var(--surface-2);color:var(--text)}
+  .pill.acc{background:var(--accent);color:#fff}
+  .go{
+    position:absolute;right:18px;bottom:16px;
+    font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);
+  }
+  .go::after{content:' →'}
+
+  /* ── Footer ── */
+  footer{margin-top:34px;text-align:center;color:var(--muted);font-size:.72rem;line-height:1.7}
+  footer b{color:var(--text);font-weight:700}
+  .tip{
+    margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    padding:14px 16px;font-size:.78rem;line-height:1.6;color:var(--muted);text-align:left;
+  }
+  .tip b{color:var(--text)}
+  .tip .k{display:inline-block;background:var(--surface-2);border-radius:5px;padding:1px 6px;
+    font-family:var(--sans);font-size:.72rem;color:var(--text)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <section class="hero">
+    <div class="eyebrow">Family Edition</div>
+    <h1>Word Games</h1>
+    <p>Two ways to play, no signal required. Pick a game and pass the phone around.</p>
+    <div class="teaser" aria-hidden="true">
+      <span class="t-x">p</span><span class="t-a">l</span><span class="t-g">a</span><span class="t-x">n</span><span class="t-g">e</span>
+    </div>
+  </section>
+
+  <section class="games">
+
+    <a class="card wordle" href="wordle.html">
+      <div class="card-top">
+        <div>
+          <div class="kicker">Solo · Rankings</div>
+          <h2>Wordle</h2>
+        </div>
+        <div class="icon">🟩</div>
+      </div>
+      <p>Guess the hidden five-letter word in six tries. Green means right spot, amber means wrong spot. Everyone gets their own profile, and the family leaderboard keeps score.</p>
+      <div class="meta">
+        <span class="pill acc">1 player at a time</span>
+        <span class="pill">Easy · Normal · Hard</span>
+        <span class="pill">Leaderboard</span>
+      </div>
+      <span class="go">Play</span>
+    </a>
+
+    <a class="card duel" href="duel.html">
+      <div class="card-top">
+        <div>
+          <div class="kicker">Head-to-head · vs Computer</div>
+          <h2>Word Duel</h2>
+        </div>
+        <div class="icon">⚔️</div>
+      </div>
+      <p>You and the computer each hide a word. Toss a coin for first move, then take turns guessing. Feedback comes as two numbers — <b style="color:var(--text)">2:1</b> means two letters in the right place and one in the wrong place. First to crack the other's word wins.</p>
+      <div class="meta">
+        <span class="pill acc">1 player vs AI</span>
+        <span class="pill">Gentle · Sharp · Ruthless</span>
+        <span class="pill">Coin toss</span>
+      </div>
+      <span class="go">Play</span>
+    </a>
+
+  </section>
+
+  <footer>
+    <div class="tip">
+      <b>Playing on a flight?</b> Open each game once while you still have signal, then add this page to your home screen
+      (<span class="k">Share</span> → <span class="k">Add to Home Screen</span>). Everything runs on the device — no connection needed after that.
+    </div>
+    <p style="margin-top:16px">Built for the family · Works offline · Nothing is sent anywhere</p>
+  </footer>
+
+</div>
+</body>
+</html>
