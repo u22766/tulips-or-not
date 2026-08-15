@@ -202,7 +202,36 @@
   .hand{background:var(--accent);color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;
     font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;text-align:center;margin-bottom:16px}
   .hand:empty{display:none}
-  .move.b{background:#1e<main>
+  .move.b{background:#1e1c2c;border-color:#2c2b42}
+  .move.a .who{color:var(--you)} .move.b .who{color:var(--cpu)}
+  .move.a.hit .score{background:var(--you);color:#0d1f16}
+  .move.b.hit .score{background:var(--accent);color:#fff}
+  #turn-bar.a{color:var(--you)} #turn-bar.b{color:var(--cpu)}
+  .sc.a .n{color:var(--you)} .sc.b .n{color:var(--cpu)}
+  .names{display:flex;gap:8px}
+  .name-in{flex:1;background:var(--surface-2);border:1px solid var(--line);border-radius:12px;
+    color:var(--text);padding:12px 14px;font-size:.95rem;font-family:var(--sans);outline:none;min-width:0}
+  .name-in:focus{border-color:var(--accent)}
+  .hand{background:var(--accent);color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;
+    font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;text-align:center;margin-bottom:16px}
+  .hand:empty{display:none}
+  @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+</style>
+</head>
+<body>
+
+<header>
+  <a href="games.html" class="wordmark" style="text-decoration:none;color:inherit">
+    <span class="eyebrow">Take Turns</span>
+    <span class="title">Word Duel</span>
+  </a>
+  <div class="hdr-actions">
+    <button class="hdr-btn" onclick="openRules()" title="How to play">?</button>
+    <button class="hdr-btn" onclick="openSetup()" title="New duel">↻</button>
+  </div>
+</header>
+
+<main>
   <div id="secret-bar">
     <div>
       <div class="lbl" id="secret-lbl">Your secret word</div>
