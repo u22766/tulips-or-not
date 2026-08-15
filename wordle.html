@@ -160,6 +160,20 @@
     pointer-events:none;animation:cf 2.5s ease-out forwards}
   @keyframes cf{to{opacity:0;transform:translateY(100vh) rotate(720deg)}}
 
+
+  .race-pick{display:flex;flex-direction:column;gap:8px;margin-bottom:14px}
+  .race-pick .player-row{cursor:pointer}
+  .race-pick .player-row .tick{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:800;color:#0d1f16}
+  .race-pick .player-row.on .tick{background:var(--correct);border-color:var(--correct)}
+  .race-pick .player-row.on{border-color:var(--correct)}
+  .hand{background:var(--accent);color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;
+    font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;text-align:center;margin-bottom:16px}
+  .race-standings{width:100%;border-collapse:collapse;font-size:.85rem;margin-bottom:8px}
+  .race-standings td{padding:10px 6px;border-top:1px solid var(--line)}
+  .race-standings td:last-child{text-align:right;font-family:var(--serif);font-size:1rem}
+  .race-standings tr.first td{color:var(--present);font-weight:800}
+  #race-banner{font-size:.6rem;letter-spacing:.18em;text-transform:uppercase;color:var(--present);font-weight:800}
   @media(prefers-reduced-motion:reduce){
     *{animation-duration:.01ms !important;transition-duration:.01ms !important}
   }
@@ -176,6 +190,7 @@
     <button class="hdr-btn" id="player-chip" onclick="openPlayers()">
       <span id="chip-emoji">👤</span><span id="chip-name">Player</span>
     </button>
+    <button class="hdr-btn" onclick="openRace()" title="Race mode">🏁</button>
     <button class="hdr-btn" onclick="openLeaderboard()" title="Rankings">🏆</button>
     <button class="hdr-btn" onclick="openSettings()" title="Settings">⚙</button>
   </div>
@@ -183,6 +198,7 @@
 
 <div id="board-wrap">
   <div id="mode-tag"></div>
+  <div id="race-banner"></div>
   <div id="board"></div>
 </div>
 <div id="toast-box"></div>
@@ -228,6 +244,31 @@
   </div>
   <div class="seg-note" id="diff-note"></div>
   <button class="btn btn-ghost" onclick="closeOverlays()">Done</button>
+</div></div>
+
+
+<div class="overlay" id="ov-race"><div class="sheet">
+  <h2>🏁 Race</h2>
+  <div class="sub">Everyone gets the <b>same</b> hidden word, one at a time on this phone. Fewest guesses wins. Nobody sees anyone else's board.</div>
+  <div class="race-pick" id="race-pick"></div>
+  <div class="note" id="race-note" style="font-size:.72rem;color:var(--muted);margin-bottom:12px"></div>
+  <button class="btn btn-primary" id="race-start" onclick="startRace()">Start race</button>
+  <button class="btn btn-ghost" onclick="closeOverlays()">Cancel</button>
+</div></div>
+
+<div class="overlay" id="ov-hand"><div class="sheet">
+  <div class="hand" id="hand-msg"></div>
+  <h2 id="hand-title"></h2>
+  <div class="sub" id="hand-sub"></div>
+  <button class="btn btn-primary" onclick="raceNextPlayer()">I'm ready</button>
+</div></div>
+
+<div class="overlay" id="ov-race-end"><div class="sheet">
+  <h2 id="race-title"></h2>
+  <div id="result-word-race" style="font-family:var(--serif);font-size:1.55rem;letter-spacing:.28em;text-transform:uppercase;color:var(--correct);text-align:center;margin:6px 0 16px;padding-left:.28em"></div>
+  <table class="race-standings" id="race-table"></table>
+  <button class="btn btn-primary" onclick="openRace()">Race again</button>
+  <button class="btn btn-ghost" onclick="exitRace()">Back to solo</button>
 </div></div>
 
 <div class="overlay" id="ov-lb"><div class="sheet">
@@ -277,7 +318,7 @@ function addPlayer(){
   const name=input.value.trim();
   if(!name){ toast('Enter a name first'); return; }
   if(players.some(p=>p.name.toLowerCase()===name.toLowerCase())){ toast('Name already taken'); return; }
-  const p={id:Date.now().toString(36),name,emoji:selEmoji,stats:{played:0,won:0,streak:0,best:0,winGuesses:0}};
+  const p={id:Date.now().toString(36)+Math.random().toString(36).slice(2,7),name,emoji:selEmoji,stats:{played:0,won:0,streak:0,best:0,winGuesses:0}};
   players.push(p); savePlayers(); input.value='';
   selectPlayer(p.id);
 }
@@ -413,7 +454,7 @@ function buildBoard(rows){
 }
 
 function newGame(){
-  closeOverlays();
+  closeOverlays(); race=null; document.getElementById('race-banner').textContent='';
   const mode=MODES[difficulty];
   maxRows=mode.rows;
   answer=mode.pool[Math.floor(Math.random()*mode.pool.length)];
@@ -439,6 +480,7 @@ document.addEventListener('keydown',e=>{
 
 function handleKey(k){
   if(gameOver||revealing) return;
+  if(document.querySelector('.overlay.open')) return;
   if(!cur()){ openPlayers(); return; }
   if(k==='⌫'){
     if(currentGuess.length){
@@ -501,10 +543,12 @@ function submitGuess(){
     if(won){
       for(let i=0;i<5;i++) setTimeout(()=>tiles[thisRow][i].classList.add('win-bounce'),i*90);
       gameOver=true; recordResult(true);
-      setTimeout(()=>{ confetti(); showResult(true); },650);
+      if(race){ raceRecord(true); setTimeout(raceHandOff,700); }
+      else setTimeout(()=>{ confetti(); showResult(true); },650);
     } else if(lost){
       gameOver=true; recordResult(false);
-      setTimeout(()=>showResult(false),350);
+      if(race){ raceRecord(false); setTimeout(raceHandOff,400); }
+      else setTimeout(()=>showResult(false),350);
     } else { row++; currentGuess=''; }
   },5*280+320);
 }
@@ -552,6 +596,7 @@ document.querySelectorAll('.overlay').forEach(o=>{
   o.addEventListener('click',e=>{
     if(e.target!==o) return;
     if(o.id==='ov-players'&&!cur()) return;
+    if(o.id==='ov-hand'||o.id==='ov-race-end') return;
     o.classList.remove('open');
   });
 });
@@ -606,6 +651,78 @@ function buildBoardPreserve(){
     }
   }));
 }
+
+
+// ═══════════ RACE MODE ═══════════
+let race=null;   // {answer, order:[ids], idx, results:{id:{won,guesses}}}
+let racePick=new Set();
+
+function openRace(){
+  if(players.length<2){ toast('Add at least two players first'); openPlayers(); return; }
+  racePick=new Set(players.map(p=>p.id));
+  renderRacePick();
+  openOverlay('ov-race');
+}
+function renderRacePick(){
+  const el=document.getElementById('race-pick'); el.innerHTML='';
+  players.forEach(p=>{
+    const row=document.createElement('div');
+    row.className='player-row'+(racePick.has(p.id)?' on':'');
+    row.innerHTML='<span class="pe">'+p.emoji+'</span><span class="pn">'+esc(p.name)+'</span><span class="tick">'+(racePick.has(p.id)?'✓':'')+'</span>';
+    row.onclick=()=>{ racePick.has(p.id)?racePick.delete(p.id):racePick.add(p.id); renderRacePick(); };
+    el.appendChild(row);
+  });
+  const n=racePick.size;
+  document.getElementById('race-note').textContent = n<2 ? 'Pick at least two racers.' : n+' racers · '+MODES[difficulty].label+' · order is shuffled';
+  document.getElementById('race-start').disabled = n<2;
+}
+function startRace(){
+  if(racePick.size<2) return;
+  const mode=MODES[difficulty];
+  const order=[...racePick]; for(let i=order.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[order[i],order[j]]=[order[j],order[i]];}
+  race={answer:mode.pool[Math.floor(Math.random()*mode.pool.length)],order,idx:-1,results:{}};
+  raceHandOff();
+}
+function raceHandOff(){
+  race.idx++;
+  if(race.idx>=race.order.length){ raceFinish(); return; }
+  const p=players.find(x=>x.id===race.order[race.idx]);
+  // wipe the board BEFORE the hand-off screen so nothing leaks
+  currentId=p.id; localStorage.setItem(LS_CURRENT,p.id); renderChip();
+  const mode=MODES[difficulty]; maxRows=mode.rows;
+  answer=race.answer; guesses=[]; currentGuess=''; row=0; gameOver=false; revealing=false;
+  buildBoard(maxRows);
+  Object.values(keyEls).forEach(k=>k.classList.remove('correct','present','absent'));
+  document.getElementById('mode-tag').textContent=mode.label;
+  document.getElementById('race-banner').textContent='Race · '+(race.idx+1)+' of '+race.order.length;
+  document.getElementById('hand-msg').textContent='📱 Hand the phone to '+p.name;
+  document.getElementById('hand-title').textContent=p.emoji+' '+p.name+', you\'re up';
+  document.getElementById('hand-sub').textContent=(race.idx===0?'You go first. ':'')+'Same word as everyone else. Fewest guesses wins. Don\'t peek at anyone\'s board.';
+  openOverlay('ov-hand');
+}
+function raceNextPlayer(){ closeOverlays(); }
+function raceRecord(won){
+  race.results[currentId]={won,guesses:guesses.length};
+}
+function raceFinish(){
+  const rows=race.order.map(id=>{const p=players.find(x=>x.id===id);const r=race.results[id]||{won:false,guesses:99};return {p,...r};});
+  rows.sort((a,b)=>(b.won-a.won)||(a.guesses-b.guesses));
+  const winnerN=rows[0].won?rows[0].guesses:null;
+  document.getElementById('race-title').textContent = winnerN!==null
+    ? '🏁 '+rows.filter(r=>r.won&&r.guesses===winnerN).map(r=>r.p.name).join(' & ')+(rows.filter(r=>r.won&&r.guesses===winnerN).length>1?' tie!':' wins!')
+    : '🏁 Nobody got it';
+  document.getElementById('result-word-race').textContent=race.answer;
+  const t=document.getElementById('race-table'); t.innerHTML='';
+  rows.forEach((r,i)=>{
+    const tr=document.createElement('tr'); if(r.won&&r.guesses===winnerN) tr.className='first';
+    tr.innerHTML='<td>'+(i+1)+'.</td><td>'+r.p.emoji+' '+esc(r.p.name)+'</td><td>'+(r.won?r.guesses+'/'+maxRows:'✗')+'</td>';
+    t.appendChild(tr);
+  });
+  document.getElementById('race-banner').textContent='';
+  if(winnerN!==null) confetti();
+  openOverlay('ov-race-end');
+}
+function exitRace(){ race=null; document.getElementById('race-banner').textContent=''; newGame(); }
 
 // ═══════════ START ═══════════
 buildKeyboard();
