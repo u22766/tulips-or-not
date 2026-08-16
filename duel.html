@@ -550,8 +550,8 @@ function finish(w){
     else{title='😤 Outdone';reveal='The computer found <b>'+loser.secret.toUpperCase()+'</b> in '+n+' guess'+(n>1?'es':'')+'.<br>Its word was <b>'+winner.secret.toUpperCase()+'</b>.';}
   } else {
     title='🏆 '+winner.name+' wins!';
-    reveal=winner.name+' cracked <b>'+loser.secret.toUpperCase()+'</b> in '+n+' guess'+(n>1?'es':'')+'.<br>'+
-      winner.name+'\'s word was <b>'+winner.secret.toUpperCase()+'</b>.';
+    reveal=esc(winner.name)+' cracked <b>'+loser.secret.toUpperCase()+'</b> in '+n+' guess'+(n>1?'es':'')+'.<br>'+
+      esc(winner.name)+'\'s word was <b>'+winner.secret.toUpperCase()+'</b>.';
     confetti();
   }
   document.getElementById('res-title').textContent=title;
