@@ -282,12 +282,8 @@
 <!-- Setup: mode + names -->
 <div class="overlay" id="ov-setup"><div class="sheet">
   <h2>New duel</h2>
-  <div class="sub">Each side hides a five-letter word. Take turns guessing. First to crack the other's word wins.</div>
-  <h3>Who's playing?</h3>
-  <div class="seg" id="mode-seg">
-    <button data-m="cpu" onclick="setMode('cpu')">Me vs Computer</button>
-    <button data-m="pvp" onclick="setMode('pvp')">Two players</button>
-  </div>
+  <div class="sub">You and the computer each hide a five-letter word. Take turns guessing — first to crack the other's word wins. Playing a person? Use <a href="duel-online.html" style="color:var(--warn)">Word Duel Online</a>.</div>
+
   <div id="cpu-opts">
     <h3>Opponent strength</h3>
     <div class="seg" id="diff-seg">
@@ -303,12 +299,6 @@
     <button data-c="tiles" onclick="setClues('tiles')">Colors · easier</button>
   </div>
   <div class="note" id="clue-note"></div>
-  <div id="pvp-opts" style="display:none">
-    <h3>Names</h3>
-    <div class="names">
-      <input class="name-in" id="name-a" maxlength="12" placeholder="Player 1" autocomplete="off">
-      <input class="name-in" id="name-b" maxlength="12" placeholder="Player 2" autocomplete="off">
-    </div>
     <div class="note">You'll each enter your word privately — the phone gets passed between you.</div>
   </div>
   <button class="btn btn-primary" onclick="beginSecrets()" style="margin-top:18px">Continue</button>
@@ -403,7 +393,7 @@ const LS_SCORE='wd-score2', LS_DIFF='wd-diff', LS_MODE='wd-mode', LS_NAMES='wd-n
 let score=JSON.parse(localStorage.getItem(LS_SCORE)||'{}');   // keyed by name
 let diff=localStorage.getItem(LS_DIFF)||'normal'; if(!DIFFS[diff]) diff='normal';
 let clues=localStorage.getItem('wd-clues')||'nums'; if(clues!=='tiles') clues='nums';
-let mode=localStorage.getItem(LS_MODE)||'cpu';
+const mode='cpu';
 let names=JSON.parse(localStorage.getItem(LS_NAMES)||'["",""]');
 
 // players[0] = side A, players[1] = side B
@@ -473,16 +463,8 @@ function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random
 
 // ═══════════ SETUP ═══════════
 function openSetup(){
-  renderMode(); renderDiff(); renderClues();
-  document.getElementById('name-a').value=names[0]||'';
-  document.getElementById('name-b').value=names[1]||'';
+  renderDiff(); renderClues();
   openOverlay('ov-setup');
-}
-function setMode(m){mode=m;localStorage.setItem(LS_MODE,m);renderMode();}
-function renderMode(){
-  document.querySelectorAll('#mode-seg button').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
-  document.getElementById('cpu-opts').style.display=mode==='cpu'?'block':'none';
-  document.getElementById('pvp-opts').style.display=mode==='pvp'?'block':'none';
 }
 function setDiff(d){diff=d;localStorage.setItem(LS_DIFF,d);renderDiff();}
 function setClues(c){clues=c;localStorage.setItem('wd-clues',c);renderClues();}
@@ -499,15 +481,7 @@ function renderDiff(){
 
 function beginSecrets(){
   clearNotes();
-  if(mode==='cpu'){
     players=[{name:'You',cpu:false,secret:''},{name:'Computer',cpu:true,secret:''}];
-  } else {
-    let a=document.getElementById('name-a').value.trim()||'Player 1';
-    let b=document.getElementById('name-b').value.trim()||'Player 2';
-    if(a.toLowerCase()===b.toLowerCase()) b+=' 2';
-    names=[a,b]; localStorage.setItem(LS_NAMES,JSON.stringify(names));
-    players=[{name:a,cpu:false,secret:''},{name:b,cpu:false,secret:''}];
-  }
   moves=[];current='';over=true;busy=false;turn=null;
   renderHistory();renderEntry();renderTurn();renderSecretBar();
   secretStep=0; promptSecret();
