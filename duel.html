@@ -172,6 +172,7 @@
   .move .who{font-size:.58rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;width:34px;flex:none}
   .move.you .who{color:var(--you)} .move.cpu .who{color:var(--cpu)}
   .move .word{font-weight:800;letter-spacing:.2em;text-transform:uppercase;font-size:1.08rem;flex:1;color:var(--text)}
+  .move.a .word{color:var(--you)} .move.b .word{color:var(--cpu)}
   .move .score{font-family:var(--serif);font-size:1.02rem;font-weight:600;letter-spacing:.04em;
     background:var(--surface-2);border-radius:8px;padding:3px 11px;white-space:nowrap}
   .move.you.hit .score{background:var(--you);color:#0d1f16}
@@ -215,6 +216,30 @@
   .hand{background:var(--accent);color:#fff;border-radius:12px;padding:10px 14px;font-weight:800;
     font-size:.78rem;letter-spacing:.06em;text-transform:uppercase;text-align:center;margin-bottom:16px}
   .hand:empty{display:none}
+
+  /* ── Scratchpad ── */
+  .np-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+  .np-chip{background:var(--surface-2);border:2px solid transparent;border-radius:9px;
+    padding:9px 0;text-align:center;font-weight:800;text-transform:uppercase;font-size:.9rem;cursor:pointer;
+    transition:.12s}
+  .np-chip.out{color:#4d4760;background:#1a1722;text-decoration:line-through}
+  .np-chip.in{background:#2aa8a0;color:#06211f;border-color:#2aa8a0}
+  .np-pos{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
+  .np-pos input{width:46px;height:50px;background:var(--surface-2);border:2px solid var(--line);border-radius:10px;
+    color:#2aa8a0;font-size:1.3rem;font-weight:800;text-transform:uppercase;text-align:center;outline:none;
+    font-family:var(--sans)}
+  .np-pos input:focus{border-color:var(--accent)}
+  .np-hint{font-size:.7rem;color:var(--muted);line-height:1.55;margin-bottom:12px;text-align:center}
+  .key.mark-out{color:#3f3a52;background:#1a1722}
+  .key.mark-in{background:#1f5d59;color:#bfe8e5}
+
+  /* per-letter clue tiles (Colors mode) */
+  .wl{display:flex;gap:3px;flex:1}
+  .wl span{min-width:24px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:.88rem;font-weight:800;text-transform:uppercase}
+  .wl .c{background:#2aa8a0;color:#06211f}
+  .wl .p{background:transparent;box-shadow:inset 0 0 0 2px #e07856;color:#e07856}
+  .wl .a{background:#1a1722;color:#5b5570}
   @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -227,6 +252,7 @@
   </a>
   <div class="hdr-actions">
     <button class="hdr-btn" onclick="openRules()" title="How to play">?</button>
+    <button class="hdr-btn" onclick="openNotes()" title="Scratchpad">✎</button>
     <button class="hdr-btn" onclick="openSetup()" title="New duel">↻</button>
   </div>
 </header>
@@ -271,6 +297,12 @@
     </div>
     <div class="note" id="diff-note"></div>
   </div>
+  <h3>Clues</h3>
+  <div class="seg" id="clue-seg">
+    <button data-c="nums" onclick="setClues('nums')">Numbers · classic</button>
+    <button data-c="tiles" onclick="setClues('tiles')">Colors · easier</button>
+  </div>
+  <div class="note" id="clue-note"></div>
   <div id="pvp-opts" style="display:none">
     <h3>Names</h3>
     <div class="names">
@@ -329,9 +361,23 @@
       <b>2:1</b> means two letters are correct <i>and</i> in the right spot, and one more letter is in the word but sitting somewhere else.
     </div>
     <p>Repeated letters count only as often as they actually appear. If the hidden word is <code>SPEED</code> and you guess <code>GEESE</code>, you get <b>1:2</b>.</p>
+    <p>Prefer an easier ride? Switch clues to <b>Colors</b> in setup: every guessed letter is painted — teal for right spot, outlined for in-the-word — so there's nothing to compute, just like the solo game.</p>
     <p>Guesses and clues are public — both of you can see everything on the board. Only the secret words are hidden. First to name the other's word wins.</p>
   </div>
   <button class="btn btn-ghost" onclick="closeOverlays()" style="margin-top:16px">Got it</button>
+</div></div>
+
+
+<!-- Scratchpad -->
+<div class="overlay" id="ov-notes"><div class="sheet">
+  <h2>✎ Scratchpad</h2>
+  <div class="sub">Your paper-and-pen, digitized. Nothing here is shared — it's your private working-out.</div>
+  <div class="np-hint">Tap a letter to cycle: normal → <s>ruled out</s> → <b style="color:#2aa8a0">in the word</b>. Marks tint your keyboard too.</div>
+  <div class="np-grid" id="np-grid"></div>
+  <div class="np-hint">Pencil in letters you've placed:</div>
+  <div class="np-pos" id="np-pos"></div>
+  <button class="btn btn-ghost" onclick="clearNotes()">Clear scratchpad</button>
+  <button class="btn btn-primary" onclick="closeOverlays()" style="margin-top:9px">Back to the duel</button>
 </div></div>
 
 <script>
@@ -356,6 +402,7 @@ const DIFFS={
 const LS_SCORE='wd-score2', LS_DIFF='wd-diff', LS_MODE='wd-mode', LS_NAMES='wd-names';
 let score=JSON.parse(localStorage.getItem(LS_SCORE)||'{}');   // keyed by name
 let diff=localStorage.getItem(LS_DIFF)||'normal'; if(!DIFFS[diff]) diff='normal';
+let clues=localStorage.getItem('wd-clues')||'nums'; if(clues!=='tiles') clues='nums';
 let mode=localStorage.getItem(LS_MODE)||'cpu';
 let names=JSON.parse(localStorage.getItem(LS_NAMES)||'["",""]');
 
@@ -377,6 +424,23 @@ function scoreGuess(guess,secret){
 }
 function sameScore(a,b){return a[0]===b[0]&&a[1]===b[1];}
 
+// per-letter pattern (Colors mode), duplicate-safe
+function evalPattern(guess,secret){
+  const r=Array(5).fill('a'), used=Array(5).fill(false);
+  for(let i=0;i<5;i++) if(guess[i]===secret[i]){ r[i]='c'; used[i]=true; }
+  for(let i=0;i<5;i++){
+    if(r[i]==='c') continue;
+    for(let j=0;j<5;j++) if(!used[j]&&guess[i]===secret[j]){ r[i]='p'; used[j]=true; break; }
+  }
+  return r.join('');
+}
+function wordTiles(word,pat){
+  let s='<span class="wl">';
+  for(let i=0;i<5;i++) s+='<span class="'+pat[i]+'">'+word[i]+'</span>';
+  return s+'</span>';
+}
+
+
 // ═══════════ COMPUTER ═══════════
 function cpuChooseGuess(){
   const D=DIFFS[diff];
@@ -393,7 +457,7 @@ function cpuChooseGuess(){
     let best=null,bestWorst=Infinity;
     for(const g of sample){
       const b={};
-      for(const c of against){const k=scoreGuess(g,c).join(':');b[k]=(b[k]||0)+1;if(b[k]>=bestWorst)break;}
+      for(const c of against){const k=clues==='tiles'?evalPattern(g,c):scoreGuess(g,c).join(':');b[k]=(b[k]||0)+1;if(b[k]>=bestWorst)break;}
       const w=Math.max(...Object.values(b));
       if(w<bestWorst){bestWorst=w;best=g;}
     }
@@ -401,12 +465,15 @@ function cpuChooseGuess(){
   }
   return pool[Math.floor(Math.random()*pool.length)];
 }
-function cpuLearn(g,res){candidates=candidates.filter(w=>sameScore(scoreGuess(g,w),res));}
+function cpuLearn(g,res,pat){
+  if(pat) candidates=candidates.filter(w=>evalPattern(g,w)===pat);
+  else candidates=candidates.filter(w=>sameScore(scoreGuess(g,w),res));
+}
 function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
 
 // ═══════════ SETUP ═══════════
 function openSetup(){
-  renderMode(); renderDiff();
+  renderMode(); renderDiff(); renderClues();
   document.getElementById('name-a').value=names[0]||'';
   document.getElementById('name-b').value=names[1]||'';
   openOverlay('ov-setup');
@@ -418,12 +485,20 @@ function renderMode(){
   document.getElementById('pvp-opts').style.display=mode==='pvp'?'block':'none';
 }
 function setDiff(d){diff=d;localStorage.setItem(LS_DIFF,d);renderDiff();}
+function setClues(c){clues=c;localStorage.setItem('wd-clues',c);renderClues();}
+function renderClues(){
+  document.querySelectorAll('#clue-seg button').forEach(b=>b.classList.toggle('on',b.dataset.c===clues));
+  document.getElementById('clue-note').textContent = clues==='tiles'
+    ? 'Each guessed letter is colored: teal = right spot, outlined orange = in the word but elsewhere. Much easier to track — great for kids.'
+    : 'You only get two numbers back (right-spot : wrong-spot) and must work out the rest yourself. The classic pen-and-paper duel.';
+}
 function renderDiff(){
   document.querySelectorAll('#diff-seg button').forEach(b=>b.classList.toggle('on',b.dataset.d===diff));
   document.getElementById('diff-note').textContent=DIFFS[diff].note;
 }
 
 function beginSecrets(){
+  clearNotes();
   if(mode==='cpu'){
     players=[{name:'You',cpu:false,secret:''},{name:'Computer',cpu:true,secret:''}];
   } else {
@@ -517,7 +592,8 @@ function submit(){
   if(current.length<5){shakeEntry();toast('Five letters');return;}
   if(!VALID_SET.has(current)){shakeEntry();toast('Not in word list');return;}
   const opp=1-turn, res=scoreGuess(current,players[opp].secret), hit=(current===players[opp].secret);
-  moves.push({who:turn,word:current,res,hit});
+  const pat=clues==='tiles'?evalPattern(current,players[opp].secret):null;
+  moves.push({who:turn,word:current,res,pat,hit});
   current='';renderEntry();renderHistory();
   if(hit){over=true;renderTurn();setTimeout(()=>finish(turn),450);return;}
   turn=opp;renderTurn();maybeCpu();
@@ -529,8 +605,9 @@ function cpuTurn(){
     const opp=1-turn;
     const g=cpuChooseGuess();cpuGuessed.add(g);
     const res=scoreGuess(g,players[opp].secret),hit=(g===players[opp].secret);
-    moves.push({who:turn,word:g,res,hit});
-    cpuLearn(g,res);renderHistory();busy=false;
+    const pat=clues==='tiles'?evalPattern(g,players[opp].secret):null;
+    moves.push({who:turn,word:g,res,pat,hit});
+    cpuLearn(g,res,pat);renderHistory();busy=false;
     if(hit){over=true;renderTurn();setTimeout(()=>finish(turn),450);return;}
     turn=opp;renderTurn();
   },700);
@@ -599,8 +676,9 @@ function renderHistory(){
     const d=document.createElement('div');
     d.className='move '+(m.who===0?'a':'b')+(m.hit?' hit':'');
     const who=players[m.who].cpu?'CPU':(mode==='cpu'?'You':players[m.who].name.slice(0,4));
-    d.innerHTML='<span class="num">'+(i+1)+'</span><span class="who">'+esc(who)+'</span><span class="word">'+m.word+
-      '</span><span class="score">'+(m.hit?'FOUND':m.res[0]+' : '+m.res[1])+'</span>';
+    const body=m.pat ? wordTiles(m.word,m.pat) : '<span class="word">'+m.word+'</span>';
+    const tail=m.hit ? '<span class="score">FOUND</span>' : (m.pat?'':'<span class="score">'+m.res[0]+' : '+m.res[1]+'</span>');
+    d.innerHTML='<span class="num">'+(i+1)+'</span><span class="who">'+esc(who)+'</span>'+body+tail;
     el.appendChild(d);
   });
   el.scrollTop=el.scrollHeight;
@@ -665,6 +743,38 @@ function confetti(){
     c.style.animationDelay=Math.random()*.8+'s';const s=4+Math.random()*6;c.style.width=s+'px';c.style.height=s+'px';
     document.body.appendChild(c);setTimeout(()=>c.remove(),3600);}
 }
+
+
+// ═══════════ SCRATCHPAD ═══════════
+let npMarks={}, npPos=['','','','',''];
+function buildNotes(){
+  const g=document.getElementById('np-grid'); g.innerHTML='';
+  'abcdefghijklmnopqrstuvwxyz'.split('').forEach(ch=>{
+    const c=document.createElement('div'); c.className='np-chip'; c.textContent=ch; c.id='np-'+ch;
+    c.onclick=()=>{ npMarks[ch]=((npMarks[ch]||0)+1)%3; paintNotes(); };
+    g.appendChild(c);
+  });
+  const pp=document.getElementById('np-pos'); pp.innerHTML='';
+  for(let i=0;i<5;i++){
+    const inp=document.createElement('input'); inp.maxLength=1; inp.autocomplete='off';
+    inp.value=npPos[i];
+    inp.addEventListener('input',()=>{ npPos[i]=inp.value.replace(/[^a-zA-Z]/g,'').toLowerCase(); inp.value=npPos[i].toUpperCase(); });
+    pp.appendChild(inp);
+  }
+  paintNotes();
+}
+function paintNotes(){
+  'abcdefghijklmnopqrstuvwxyz'.split('').forEach(ch=>{
+    const chip=document.getElementById('np-'+ch); if(!chip) return;
+    chip.className='np-chip'+(npMarks[ch]===1?' out':npMarks[ch]===2?' in':'');
+    const key=keyEls[ch]; if(!key) return;
+    key.classList.remove('mark-out','mark-in');
+    if(npMarks[ch]===1) key.classList.add('mark-out');
+    else if(npMarks[ch]===2) key.classList.add('mark-in');
+  });
+}
+function clearNotes(){ npMarks={}; npPos=['','','','','']; buildNotes(); }
+function openNotes(){ buildNotes(); openOverlay('ov-notes'); }
 
 // ═══════════ START ═══════════
 buildKeyboard();renderEntry();renderHistory();renderSecretBar();

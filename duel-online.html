@@ -64,6 +64,7 @@
   .move.me .who{color:var(--you)} .move.them .who{color:var(--them)}
   .move.them{background:#1e1c2c;border-color:#2c2b42}
   .move .word{font-weight:800;letter-spacing:.2em;text-transform:uppercase;font-size:1.08rem;flex:1;color:var(--text)}
+  .move.me .word{color:var(--you)} .move.them .word{color:var(--them)}
   .move .score{font-family:var(--serif);font-size:1.02rem;font-weight:600;letter-spacing:.04em;
     background:var(--surface-2);border-radius:8px;padding:3px 11px;white-space:nowrap}
   .move.me.hit .score{background:var(--you);color:#0d1f16}
@@ -180,6 +181,29 @@
   .toast{background:var(--text);color:#141118;padding:10px 20px;border-radius:10px;font-weight:700;
     font-size:.85rem;opacity:0;transition:opacity .25s;pointer-events:none;box-shadow:0 6px 24px rgba(0,0,0,.45)}
   .toast.show{opacity:1}
+
+  /* ── Scratchpad ── */
+  .np-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:14px}
+  .np-chip{background:var(--surface-2);border:2px solid transparent;border-radius:9px;
+    padding:9px 0;text-align:center;font-weight:800;text-transform:uppercase;font-size:.9rem;cursor:pointer;
+    transition:.12s}
+  .np-chip.out{color:#4d4760;background:#1a1722;text-decoration:line-through}
+  .np-chip.in{background:#2aa8a0;color:#06211f;border-color:#2aa8a0}
+  .np-pos{display:flex;gap:8px;justify-content:center;margin-bottom:14px}
+  .np-pos input{width:46px;height:50px;background:var(--surface-2);border:2px solid var(--line);border-radius:10px;
+    color:#2aa8a0;font-size:1.3rem;font-weight:800;text-transform:uppercase;text-align:center;outline:none;
+    font-family:var(--sans)}
+  .np-pos input:focus{border-color:var(--accent)}
+  .np-hint{font-size:.7rem;color:var(--muted);line-height:1.55;margin-bottom:12px;text-align:center}
+  .key.mark-out{color:#3f3a52;background:#1a1722}
+  .key.mark-in{background:#1f5d59;color:#bfe8e5}
+
+  .wl{display:flex;gap:3px;flex:1}
+  .wl span{min-width:24px;height:28px;border-radius:7px;display:inline-flex;align-items:center;justify-content:center;
+    font-size:.88rem;font-weight:800;text-transform:uppercase}
+  .wl .c{background:#2aa8a0;color:#06211f}
+  .wl .p{background:transparent;box-shadow:inset 0 0 0 2px #e07856;color:#e07856}
+  .wl .a{background:#1a1722;color:#5b5570}
   @media(prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
 </style>
 </head>
@@ -192,6 +216,7 @@
   </a>
   <div class="hdr-actions">
     <button class="hdr-btn" onclick="openRules()" title="How to play">?</button>
+    <button class="hdr-btn" onclick="openNotes()" title="Scratchpad">✎</button>
     <button class="hdr-btn" onclick="leaveRoom()" title="Leave room">✕</button>
   </div>
 </header>
@@ -231,7 +256,12 @@
   <h2>Word Duel Online</h2>
   <div class="sub">Play live against someone on their own phone. One of you creates a room, the other joins with the code.</div>
   <input class="field" id="my-name" maxlength="12" placeholder="Your name" autocomplete="off">
-  <button class="btn btn-primary" onclick="createRoom()">Create a room</button>
+  <h3>Clues for your room</h3>
+  <div class="seg" id="clue-seg">
+    <button data-c="nums" onclick="setClues('nums')">Numbers · classic</button>
+    <button data-c="tiles" onclick="setClues('tiles')">Colors · easier</button>
+  </div>
+  <button class="btn btn-primary" onclick="createRoom()" style="margin-top:12px">Create a room</button>
   <h3>Or join one</h3>
   <input class="field code" id="join-code" maxlength="6" placeholder="CODE" autocomplete="off"
          autocapitalize="characters" autocorrect="off" spellcheck="false">
@@ -297,6 +327,7 @@
     <p>You and your opponent each hide a five-letter word on your own phones. A coin toss decides who goes first, then you take turns guessing. After every guess you get back two numbers.</p>
     <div class="ex"><b>2:1</b> means two letters are correct <i>and</i> in the right spot, and one more letter is in the word but in the wrong place.</div>
     <p>Repeated letters count only as often as they appear: hidden word <code>SPEED</code>, guess <code>GEESE</code> → <b>1:2</b>. First to name the other's word wins.</p>
+    <p>Rooms can also be created with <b>Colors</b> clues — every guessed letter gets painted (teal = right spot, outlined = in the word), which is friendlier for younger players.</p>
   </div>
   <button class="btn btn-ghost" onclick="closeOverlays()" style="margin-top:14px">Got it</button>
 </div></div>
@@ -353,6 +384,19 @@
   </div>
 </div></div>
 
+
+<!-- Scratchpad -->
+<div class="overlay" id="ov-notes"><div class="sheet">
+  <h2>✎ Scratchpad</h2>
+  <div class="sub">Your paper-and-pen, digitized. Nothing here is shared — it's your private working-out.</div>
+  <div class="np-hint">Tap a letter to cycle: normal → <s>ruled out</s> → <b style="color:#2aa8a0">in the word</b>. Marks tint your keyboard too.</div>
+  <div class="np-grid" id="np-grid"></div>
+  <div class="np-hint">Pencil in letters you've placed:</div>
+  <div class="np-pos" id="np-pos"></div>
+  <button class="btn btn-ghost" onclick="clearNotes()">Clear scratchpad</button>
+  <button class="btn btn-primary" onclick="closeOverlays()" style="margin-top:9px">Back to the duel</button>
+</div></div>
+
 <script>
 /* ═══════════════════════════════════════════════════════════
    FIREBASE CONFIG — paste your project's values here (step 4–5
@@ -388,10 +432,29 @@ function scoreGuess(guess,secret){
 }
 
 // light obfuscation so the secret isn't plainly readable in the network tab
+
+function evalPattern(guess,secret){
+  const r=Array(5).fill('a'), used=Array(5).fill(false);
+  for(let i=0;i<5;i++) if(guess[i]===secret[i]){ r[i]='c'; used[i]=true; }
+  for(let i=0;i<5;i++){
+    if(r[i]==='c') continue;
+    for(let j=0;j<5;j++) if(!used[j]&&guess[i]===secret[j]){ r[i]='p'; used[j]=true; break; }
+  }
+  return r.join('');
+}
+function wordTiles(word,pat){
+  let s='<span class="wl">';
+  for(let i=0;i<5;i++) s+='<span class="'+pat[i]+'">'+word[i]+'</span>';
+  return s+'</span>';
+}
+
 function fog(w){return btoa(w.split('').reverse().join(''));}
 function defog(s){try{return atob(s).split('').reverse().join('');}catch(e){return '';}}
 
 // ═══════════ STATE ═══════════
+let clues=localStorage.getItem('wdo-clues')||'nums'; if(clues!=='tiles') clues='nums';
+function setClues(c){clues=c;localStorage.setItem('wdo-clues',c);renderClues();}
+function renderClues(){document.querySelectorAll('#clue-seg button').forEach(b=>b.classList.toggle('on',b.dataset.c===clues));}
 let db=null, roomRef=null, roomCode=null, role=null;  // role: 'host'|'guest'
 let room=null;            // last snapshot
 let mySecret='';          // kept locally too
@@ -432,6 +495,7 @@ function createRoom(){
   ref.set({
     created: Date.now(),
     status:'waiting',
+    feedbackMode: clues,
     host:{name, online:true},
     wins:{host:0,guest:0}
   }).then(()=>{
@@ -463,6 +527,7 @@ function showHomeError(err){
 function homeMsg(t){ document.getElementById('home-msg').textContent=t; }
 
 function enterRoom(code,r){
+  clearNotes();
   roomCode=code; role=r;
   roomRef=db.ref('rooms/'+code);
   document.getElementById('room-code-val').textContent=code;
@@ -499,7 +564,7 @@ function oppRole(){ return role==='host'?'guest':'host'; }
 function onRoom(){
   // when the room resets to a new round (rematch), clear round-local state on BOTH clients
   if(room.status==='secrets' && prevStatus && prevStatus!=='secrets' && prevStatus!=='waiting'){
-    mySecret=''; current=''; lastMoveCount=0; tossAnimated=false; resultShown=false;
+    clearNotes(); mySecret=''; current=''; lastMoveCount=0; tossAnimated=false; resultShown=false;
     const c=document.getElementById('coin');
     c.className='coin'; c.style.transition='none'; void c.offsetWidth; c.style.transition='';
     renderEntry();
@@ -651,7 +716,7 @@ function renderDone(){
 
 function requestRematch(){
   // either player can reset the round; wins and names persist
-  mySecret=''; current=''; lastMoveCount=0; tossAnimated=false; resultShown=false;
+  clearNotes(); mySecret=''; current=''; lastMoveCount=0; tossAnimated=false; resultShown=false;
   const c=document.getElementById('coin'); c.className='coin'; c.style.transition='none'; void c.offsetWidth; c.style.transition='';
   roomRef.update({status:'secrets', moves:null, toss:null, turn:null, winner:null,
     'host/secret':null, 'guest/secret':null});
@@ -675,8 +740,11 @@ function renderHistory(){
   const arr=movesArr();
   const el=document.getElementById('history');
   if(!arr.length){
+    const lg = room.feedbackMode==='tiles'
+      ? 'Teal = right spot · outlined = in the word, elsewhere'
+      : 'Feedback reads right : wrong-spot';
     el.innerHTML='<div class="hist-empty">Both words are hidden.<br>Take turns guessing — first to name the other\'s word wins.</div>'+
-      '<div class="legend">Feedback reads right : wrong-spot</div>';return;
+      '<div class="legend">'+lg+'</div>';return;
   }
   el.innerHTML='';
   arr.forEach((m,i)=>{
@@ -684,8 +752,12 @@ function renderHistory(){
     const d=document.createElement('div');
     d.className='move '+(mine?'me':'them')+(m.hit?' hit':'');
     const who=esc(((mine?(me().name||'You'):(them().name||'Opp'))).slice(0,7));
-    d.innerHTML='<span class="num">'+(i+1)+'</span><span class="who">'+who+'</span><span class="word">'+esc(m.word)+
-      '</span><span class="score">'+(m.hit?'FOUND':m.ex+' : '+m.mis)+'</span>';
+    let body='<span class="word">'+esc(m.word)+'</span>', tail='<span class="score">'+(m.hit?'FOUND':m.ex+' : '+m.mis)+'</span>';
+    if(room.feedbackMode==='tiles'){
+      const oppSecret=defog((room[m.who==='host'?'guest':'host']||{}).secret||'');
+      if(oppSecret){ body=wordTiles(esc(m.word),evalPattern(m.word,oppSecret)); tail=m.hit?'<span class="score">FOUND</span>':''; }
+    }
+    d.innerHTML='<span class="num">'+(i+1)+'</span><span class="who">'+who+'</span>'+body+tail;
     el.appendChild(d);
   });
   el.scrollTop=el.scrollHeight;
@@ -758,9 +830,42 @@ function confetti(){
     document.body.appendChild(c);setTimeout(()=>c.remove(),3600);}
 }
 
+
+// ═══════════ SCRATCHPAD ═══════════
+let npMarks={}, npPos=['','','','',''];
+function buildNotes(){
+  const g=document.getElementById('np-grid'); g.innerHTML='';
+  'abcdefghijklmnopqrstuvwxyz'.split('').forEach(ch=>{
+    const c=document.createElement('div'); c.className='np-chip'; c.textContent=ch; c.id='np-'+ch;
+    c.onclick=()=>{ npMarks[ch]=((npMarks[ch]||0)+1)%3; paintNotes(); };
+    g.appendChild(c);
+  });
+  const pp=document.getElementById('np-pos'); pp.innerHTML='';
+  for(let i=0;i<5;i++){
+    const inp=document.createElement('input'); inp.maxLength=1; inp.autocomplete='off';
+    inp.value=npPos[i];
+    inp.addEventListener('input',()=>{ npPos[i]=inp.value.replace(/[^a-zA-Z]/g,'').toLowerCase(); inp.value=npPos[i].toUpperCase(); });
+    pp.appendChild(inp);
+  }
+  paintNotes();
+}
+function paintNotes(){
+  'abcdefghijklmnopqrstuvwxyz'.split('').forEach(ch=>{
+    const chip=document.getElementById('np-'+ch); if(!chip) return;
+    chip.className='np-chip'+(npMarks[ch]===1?' out':npMarks[ch]===2?' in':'');
+    const key=keyEls[ch]; if(!key) return;
+    key.classList.remove('mark-out','mark-in');
+    if(npMarks[ch]===1) key.classList.add('mark-out');
+    else if(npMarks[ch]===2) key.classList.add('mark-in');
+  });
+}
+function clearNotes(){ npMarks={}; npPos=['','','','','']; if(document.getElementById('np-grid')) buildNotes(); }
+function openNotes(){ buildNotes(); openOverlay('ov-notes'); }
+
 // prefill name
 const savedName=localStorage.getItem('wdo-name'); 
 if(savedName) document.getElementById('my-name').value=savedName;
+renderClues();
 
 init();
 </script>
