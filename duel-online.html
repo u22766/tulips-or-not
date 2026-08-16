@@ -519,8 +519,16 @@ function joinRoom(){
   ref.once('value').then(snap=>{
     const r=snap.val();
     if(!r){ homeMsg('No room with that code'); return; }
-    if(r.status!=='waiting' || r.guest){ homeMsg('That room already has two players'); return; }
-    return ref.update({ status:'secrets', guest:{name, online:true} }).then(()=>enterRoom(code,'guest'));
+    if(r.status==='waiting' && !r.guest){
+      return ref.update({ status:'secrets', guest:{name, online:true} }).then(()=>enterRoom(code,'guest'));
+    }
+    // a seat whose player left or disconnected can be reclaimed
+    const seat = (r.guest && r.guest.online===false) ? 'guest'
+               : (r.host  && r.host.online===false)  ? 'host' : null;
+    if(seat){
+      return ref.child(seat).update({name, online:true}).then(()=>enterRoom(code,seat));
+    }
+    homeMsg('That room already has two players');
   }).catch(err=>showHomeError(err));
 }
 
@@ -543,7 +551,12 @@ function enterRoom(code,r){
 }
 
 function leaveRoom(){
-  if(roomRef){ roomRef.off(); if(role) roomRef.child(role+'/online').set(false); }
+  if(roomRef){
+    roomRef.off();
+    const other = room ? room[role==='host'?'guest':'host'] : null;
+    if(room && (!other || other.online===false)) roomRef.set(null);       // last one out cleans up
+    else if(role) roomRef.child(role+'/online').set(false);
+  }
   roomRef=null;roomCode=null;role=null;room=null;mySecret='';current='';
   renderMySecret();
   document.getElementById('room-code-val').textContent='—';
@@ -605,15 +618,15 @@ function onRoom(){
         document.getElementById('secret-wait').style.display='flex';
         document.getElementById('secret-btn').style.display='none';
         openOverlay('ov-secret');
-      } else if(role==='host'){
-        // both locked — host advances
+      } else {
+        // both locked — whoever notices first advances (idempotent, same value)
         roomRef.update({status:'toss'});
       }
       break;
     case 'toss': renderToss(); break;
     case 'play':
-      if(document.getElementById('ov-toss').classList.contains('open')&&tossAnimated){/* leave via Begin */}
-      else if(!tossAnimated) closeOverlays();
+      if(room.toss && !tossAnimated && !room.moves) renderToss();   // animate the toss we just got
+      else if(!tossAnimated){ tossAnimated=true; closeOverlays(); } // mid-game reload: skip replay
       renderPlay();
       break;
     case 'done': renderPlay(); renderDone(); break;
@@ -667,13 +680,14 @@ function renderToss(){
       document.getElementById('toss-result').innerHTML='It\'s <b>'+room.toss.outcome.toUpperCase()+'</b> — '+
         (iGoFirst?'you guess first.':esc(them().name||'they')+' guesses first.');
       document.getElementById('toss-go').style.display='block';
-      if(role==='host') roomRef.update({status:'play', turn:firstRole});
     },2350);
   }
 }
 function callToss(side){
   if(role!=='host'||room.toss)return;
-  roomRef.update({toss:{call:side, outcome:Math.random()<0.5?'heads':'tails'}});
+  const outcome=Math.random()<0.5?'heads':'tails';
+  // atomic: state advances in the same write, so a sleeping phone can't stall the game
+  roomRef.update({toss:{call:side,outcome}, status:'play', turn:(outcome===side)?'host':'guest'});
 }
 
 // ═══════════ PLAY ═══════════
