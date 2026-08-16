@@ -48,6 +48,8 @@
     padding:9px 16px;border-bottom:1px solid var(--line);flex:none;font-size:.75rem}
   #room-bar .lbl{color:var(--muted);letter-spacing:.1em;text-transform:uppercase;font-weight:700;font-size:.6rem}
   #room-code-val{font-family:var(--serif);font-size:1.05rem;letter-spacing:.3em;color:var(--warn)}
+  #my-secret-val{font-family:var(--serif);font-size:1rem;letter-spacing:.24em;color:var(--you);text-transform:uppercase}
+  #my-word-box{cursor:pointer;-webkit-user-select:none;user-select:none}
   #vs-line{font-size:.72rem;color:var(--muted);text-align:right}
   #vs-line b{color:var(--text)}
   #opp-status{font-size:.62rem;color:var(--muted)}
@@ -199,6 +201,12 @@
     <div>
       <div class="lbl">Room</div>
       <div id="room-code-val">—</div>
+    </div>
+    <div id="my-word-box" style="text-align:center;display:none"
+         onmousedown="peek(1)" onmouseup="peek(0)" onmouseleave="peek(0)"
+         ontouchstart="peek(1)" ontouchend="peek(0)">
+      <div class="lbl">Your word · hold</div>
+      <div id="my-secret-val">•••••</div>
     </div>
     <div style="text-align:right">
       <div id="vs-line"></div>
@@ -352,13 +360,11 @@
    control comes from the database rules, not from hiding these.
    ═══════════════════════════════════════════════════════════ */
 const FIREBASE_CONFIG = {
-  apiKey: "AIzaSyBz4Pz8g4MAHZc3W6bn6zVw5MsGZElymiE",
-  authDomain: "word-duel-ae075.firebaseapp.com",
-  databaseURL: "https://word-duel-ae075-default-rtdb.firebaseio.com",
-  projectId: "word-duel-ae075",
-  storageBucket: "word-duel-ae075.firebasestorage.app",
-  messagingSenderId: "827658793947",
-  appId: "1:827658793947:web:83907894c4e69415beedfe"
+  apiKey:            "PASTE_API_KEY",
+  authDomain:        "PASTE_PROJECT.firebaseapp.com",
+  databaseURL:       "PASTE_DATABASE_URL",
+  projectId:         "PASTE_PROJECT_ID",
+  appId:             "PASTE_APP_ID"
 };
 
 /* WORD DATA — packed 5-char chunks. ANSWERS: 2,315 · VALID: 14,855 */
@@ -398,6 +404,14 @@ function init(){
   if(!configured){ openOverlay('ov-config'); return; }
   firebase.initializeApp(FIREBASE_CONFIG);
   db=firebase.database();
+  // presence that survives phone sleep: re-arm on every reconnect
+  db.ref('.info/connected').on('value',s=>{
+    if(s.val()===true && roomRef && role){
+      const r=roomRef.child(role+'/online');
+      r.onDisconnect().set(false);
+      r.set(true);
+    }
+  });
   openOverlay('ov-home');
 }
 
@@ -460,6 +474,7 @@ function enterRoom(code,r){
 function leaveRoom(){
   if(roomRef){ roomRef.off(); if(role) roomRef.child(role+'/online').set(false); }
   roomRef=null;roomCode=null;role=null;room=null;mySecret='';current='';
+  renderMySecret();
   document.getElementById('room-code-val').textContent='—';
   document.getElementById('vs-line').textContent='';
   document.getElementById('opp-status').textContent='';
@@ -489,9 +504,15 @@ function onRoom(){
   }
   prevStatus=room.status;
 
-  // header
+  // restore my secret after a reload (it's my own, just encoded)
+  if(!mySecret && me().secret) mySecret=defog(me().secret);
+  renderMySecret();
+  // header: both names
   const t=them();
-  document.getElementById('vs-line').innerHTML = t.name ? 'vs <b>'+esc(t.name)+'</b>' : '';
+  const mine=me().name||'You';
+  document.getElementById('vs-line').innerHTML = t.name
+    ? '<b style="color:var(--you)">'+esc(mine)+'</b> vs <b style="color:var(--them)">'+esc(t.name)+'</b>'
+    : '<b style="color:var(--you)">'+esc(mine)+'</b>';
   const os=document.getElementById('opp-status');
   if(t.name){ os.textContent = t.online===false?'● disconnected':'● online';
     os.className = t.online===false?'off':''; }
@@ -660,7 +681,7 @@ function renderHistory(){
     const mine=(m.who===role);
     const d=document.createElement('div');
     d.className='move '+(mine?'me':'them')+(m.hit?' hit':'');
-    const who=mine?'You':esc((them().name||'Opp').slice(0,7));
+    const who=esc(((mine?(me().name||'You'):(them().name||'Opp'))).slice(0,7));
     d.innerHTML='<span class="num">'+(i+1)+'</span><span class="who">'+who+'</span><span class="word">'+esc(m.word)+
       '</span><span class="score">'+(m.hit?'FOUND':m.ex+' : '+m.mis)+'</span>';
     el.appendChild(d);
@@ -703,6 +724,17 @@ document.addEventListener('keydown',e=>{
 document.getElementById('secret-input').addEventListener('input',validateSecret);
 
 // ═══════════ HELPERS ═══════════
+function renderMySecret(){
+  const box=document.getElementById('my-word-box');
+  box.style.display = mySecret ? 'block' : 'none';
+  if(mySecret && !box._peeking) document.getElementById('my-secret-val').textContent='•••••';
+}
+function peek(on){
+  const box=document.getElementById('my-word-box');
+  box._peeking=!!on;
+  if(!mySecret) return;
+  document.getElementById('my-secret-val').textContent = on ? mySecret.toUpperCase() : '•••••';
+}
 function openOverlay(id){closeOverlays();document.getElementById(id).classList.add('open');}
 function closeOverlays(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'));}
 function openRules(){openOverlay('ov-rules');}
