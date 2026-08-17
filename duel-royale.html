@@ -112,6 +112,9 @@
   .key.wide{flex:1.6;max-width:70px;font-size:.62rem}
   .key.mark-out{color:#3f3a52;background:#1a1722}
   .key.mark-in{background:#1f5d59;color:#bfe8e5}
+  .key.kc{background:#2aa8a0;color:#06211f}
+  .key.kp{background:transparent;box-shadow:inset 0 0 0 2px #e07856;color:#e07856}
+  .key.ka{background:#15121d;color:#3f3a52}
 
   .overlay{position:fixed;inset:0;background:rgba(10,8,15,.85);display:none;
     align-items:flex-end;justify-content:center;z-index:500;backdrop-filter:blur(3px)}
@@ -246,7 +249,10 @@
 <div class="overlay open" id="ov-home"><div class="sheet">
   <h2>Word Duel Royale</h2>
   <div class="sub">Three to five players, each on their own phone. Everyone hides a word. Nobody knows who's hunting whom. Last word standing wins.</div>
-  <input class="field" id="my-name" maxlength="12" placeholder="Your name" autocomplete="off">
+  <div style="display:flex;gap:8px;margin-bottom:10px">
+    <input class="field" id="my-name" maxlength="12" placeholder="Your name" autocomplete="off" style="margin-bottom:0;flex:1">
+    <button class="hdr-btn" style="height:auto;min-width:52px;justify-content:center;font-size:1.2rem" onclick="rollName()" title="New identity">🎲</button>
+  </div>
   <h3>Clues for your room</h3>
   <div class="seg" id="clue-seg">
     <button data-c="nums" onclick="setClues('nums')">Numbers · classic</button>
@@ -322,7 +328,7 @@
 <div class="overlay" id="ov-notes"><div class="sheet">
   <h2>✎ Scratchpad</h2>
   <div class="sub">Private working-out. Nothing here is shared.</div>
-  <div class="np-hint">Tap a letter to cycle: normal → <s>ruled out</s> → <b style="color:#2aa8a0">in a word</b>. Marks tint your keyboard.</div>
+  <div class="np-hint">The keyboard auto-colors from your own guesses at your selected target. Manual marks here show on keys the auto-coloring has not claimed.</div>
   <div class="np-grid" id="np-grid"></div>
   <div class="np-hint">Pencil in placed letters:</div>
   <div class="np-pos" id="np-pos"></div>
@@ -515,7 +521,13 @@ function init(){
 // ═══════════ ROOMS ═══════════
 const CODE_CHARS='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 function genCode(){let c='';for(let i=0;i<6;i++)c+=CODE_CHARS[Math.floor(Math.random()*CODE_CHARS.length)];return c;}
-function myName(){ return (document.getElementById('my-name').value.trim()||'Player').slice(0,12); }
+const ALIENS=['Zorblax','Xyla','Krell','Nebulo','Quorx','Vexa','Plutar','Zinnix','Traxo','Umbra',
+ 'Sylth','Korvo','Mizar','Draxi','Ephix','Glim','Hydrax','Ixion','Jyx','Kelvix','Lumon','Morbo','Nyxa',
+ 'Orbix','Pyxis','Rilo','Sputz','Tycho','Uvox','Vantor','Wubbo','Xenith','Ylva','Zapp','Grubix','Floop',
+ 'Skorp','Threx','Cindra','Dworp','Eelox','Fizzle','Gorlon','Snix','Blorp','Quill','Zuzu','Klaxo'];
+function randomAlien(){return ALIENS[Math.floor(Math.random()*ALIENS.length)];}
+function rollName(){document.getElementById('my-name').value=randomAlien();}
+function myName(){ return (document.getElementById('my-name').value.trim()||randomAlien()).slice(0,12); }
 
 function createRoom(){
   if(!db) return;
@@ -660,7 +672,7 @@ function onRoom(){
       showResult();
       break;
   }
-  renderHistory(); renderTurn(); renderTargets();
+  renderHistory(); renderTurn(); renderTargets(); renderKeyboardState();
 }
 
 // ═══════════ LOBBY ═══════════
@@ -762,13 +774,13 @@ function renderTargets(){
   if(myTarget && !opts.includes(myTarget)) myTarget=null;
   if(!myTarget && opts.length===1) myTarget=opts[0];
   row.style.display='flex';
-  row.innerHTML='<div class="lbl">Secret target — only you can see this</div>';
+  row.innerHTML='<div class="lbl">Secret target — keyboard shows what you know about them</div>';
   opts.forEach(s=>{
     const b=document.createElement('button');
     b.className='tbtn'+(myTarget===s?' sel':'');
     b.style.color=myTarget===s?PCOLORS[s]:'';
     b.textContent=players()[s].name;
-    b.onclick=()=>{ myTarget=s; renderTargets(); };
+    b.onclick=()=>{ myTarget=s; renderTargets(); renderKeyboardState(); };
     row.appendChild(b);
   });
 }
@@ -1002,6 +1014,47 @@ document.addEventListener('keydown',e=>{
   else if(/^[a-zA-Z]$/.test(e.key))handleKey(e.key.toLowerCase());
 });
 
+
+// what I personally know about a target's word, from MY guesses at them
+function myKnowledge(target){
+  const map={}; const rank={c:3,p:2,a:1};
+  const up=(L,s)=>{ if(!map[L]||rank[s]>rank[map[L]]) map[L]=s; };
+  movesArr().forEach(m=>{
+    if(m.who!==seat||m.skip) return;
+    const t=m.tr||defog(m.t||'');
+    if(t!==target) return;
+    if(m.pat){
+      for(let i=0;i<5;i++){
+        if(m.pat[i]==='c') up(m.word[i],'c');
+        else if(m.pat[i]==='p') up(m.word[i],'p');
+      }
+      for(let i=0;i<5;i++){
+        const L=m.word[i]; let inWord=false;
+        for(let j=0;j<5;j++) if(m.word[j]===L&&m.pat[j]!=='a'){ inWord=true; break; }
+        if(!inWord) up(L,'a');
+      }
+    } else {
+      const tot=(m.ex||0)+(m.mis||0);
+      if(tot===0){ for(const L of m.word) up(L,'a'); }
+      else if(tot===5){ for(const L of m.word) up(L,'p'); }
+    }
+  });
+  return map;
+}
+function renderKeyboardState(){
+  const auto = (room&&myTarget) ? myKnowledge(myTarget) : {};
+  'abcdefghijklmnopqrstuvwxyz'.split('').forEach(ch=>{
+    const key=keyEls[ch]; if(!key) return;
+    key.classList.remove('kc','kp','ka','mark-out','mark-in');
+    const s=auto[ch];
+    if(s==='c') key.classList.add('kc');
+    else if(s==='p') key.classList.add('kp');
+    else if(s==='a') key.classList.add('ka');
+    else if(npMarks[ch]===1) key.classList.add('mark-out');
+    else if(npMarks[ch]===2) key.classList.add('mark-in');
+  });
+}
+
 // ═══════════ SCRATCHPAD ═══════════
 let npMarks={}, npPos=['','','','',''];
 function buildNotes(){
@@ -1024,11 +1077,8 @@ function paintNotes(){
   'abcdefghijklmnopqrstuvwxyz'.split('').forEach(ch=>{
     const chip=document.getElementById('np-'+ch); if(!chip) return;
     chip.className='np-chip'+(npMarks[ch]===1?' out':npMarks[ch]===2?' in':'');
-    const key=keyEls[ch]; if(!key) return;
-    key.classList.remove('mark-out','mark-in');
-    if(npMarks[ch]===1) key.classList.add('mark-out');
-    else if(npMarks[ch]===2) key.classList.add('mark-in');
   });
+  renderKeyboardState();
 }
 function clearNotes(){ npMarks={}; npPos=['','','','','']; if(document.getElementById('np-grid')) buildNotes(); }
 function openNotes(){ buildNotes(); openOverlay('ov-notes'); }
@@ -1063,8 +1113,7 @@ function confetti(){
     document.body.appendChild(c);setTimeout(()=>c.remove(),3600);}
 }
 
-const savedName=localStorage.getItem('wr-name');
-if(savedName) document.getElementById('my-name').value=savedName;
+document.getElementById('my-name').value = localStorage.getItem('wr-name') || randomAlien();
 init();
 </script>
 </body>
