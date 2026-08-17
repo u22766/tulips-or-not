@@ -410,12 +410,12 @@
   <div class="tlvl" id="tl-quiet"><span class="badge" style="color:#46a171;border:1px solid #46a17155">QUIET</span>
     <span class="txt">Nobody has taken a shot at your word yet.</span></div>
   <div class="tlvl" id="tl-probed"><span class="badge" style="color:#d9a13f;border:1px solid #d9a13f66">PROBED</span>
-    <span class="txt">Someone has guessed at you, but nothing has landed hard — <b>fewer than 2 letters in the right spot</b> and <b>fewer than 3 letters found</b> in total.</span></div>
+    <span class="txt">Someone has guessed at you, but no single hunter has learned much yet.</span></div>
   <div class="tlvl" id="tl-hot"><span class="badge" style="color:#e2704d;border:1px solid #e2704d88">HOT</span>
-    <span class="txt">A guess landed <b>2 letters in the right spot</b>, or found <b>3+ of your letters</b> anywhere. Someone is closing in.</span></div>
+    <span class="txt">One hunter has <b>pinned 2 letters in the right spot</b>, or uncovered <b>3 or more of your letters</b> — counted across <i>every</i> guess they've made at you, not just their last one.</span></div>
   <div class="tlvl" id="tl-critical"><span class="badge" style="background:var(--accent);color:#fff">CRITICAL</span>
-    <span class="txt">A guess landed <b>4 letters in the right spot</b>, or found <b>all 5 of your letters</b>. You are one good guess from elimination.</span></div>
-  <div class="note" style="margin-top:12px">The number beside the level is how many shots have been fired at you. A <b>🔄 panic swap</b> resets everything to QUIET — your hunters' work is wiped and the count starts over.</div>
+    <span class="txt">One hunter has <b>pinned 4 positions</b>, or knows <b>every letter in your word</b>. You are one good guess from elimination.</span></div>
+  <div class="note" style="margin-top:12px">Knowledge is tracked <b>per hunter</b> — they don't share notes, so the meter shows whoever is closest, not everyone's clues added together. The number beside the level is total shots fired at you. A <b>🔄 panic swap</b> resets everything to QUIET: every hunter starts from nothing.</div>
   <button class="btn btn-primary" onclick="closeOverlays()" style="margin-top:14px">Got it</button>
 </div></div>
 
@@ -453,7 +453,7 @@
     <p>Name someone's word exactly and they're <b>knocked out</b> (their word is revealed). Run out the clock and your turn is skipped — three skips in a row and the game assumes you've wandered off and knocks you out too.</p>
     <p>Last player standing wins.</p>
     <p><b>Full fog rooms:</b> you see only your own guesses and clues — everyone else's shots appear as •••••.</p>
-    <div class="ex"><b>☠ Threat meter.</b> Counts only guesses aimed at your word. <b>QUIET</b> none yet · <b>PROBED</b> someone guessed at you · <b>HOT</b> a guess hit 2 letters in place or found 3+ of your letters · <b>CRITICAL</b> 4 letters in place or all 5 found. Tap the meter in-game for the full breakdown.</div>
+    <div class="ex"><b>☠ Threat meter.</b> Counts only guesses aimed at your word, and tracks what each hunter has learned <i>across all their guesses</i>. <b>QUIET</b> none yet · <b>PROBED</b> someone is guessing at you · <b>HOT</b> a hunter has pinned 2 positions or found 3+ of your letters · <b>CRITICAL</b> 4 positions pinned or every letter known. Tap the meter in-game for the breakdown.</div>
     <p>Once per game you may burn a turn on a <b>🔄 panic swap</b> to change your word. The swap is announced; the new word is not. Your meter resets to QUIET and every clue gathered about your old word — including the hunters' keyboard colouring — dies with it.</p>
   </div>
   <button class="btn btn-ghost" onclick="openOverlay('ov-config')" style="margin-top:14px">⚙ Database setup &amp; rules</button>
@@ -1067,7 +1067,8 @@ function maybeShowKnockout(){
     document.getElementById('out-title').textContent='💀 You\'re out';
     document.getElementById('out-reveal').innerHTML =
       (by?esc(by.name)+' found your word':'Three timeouts — the game moved on without you')+
-      ': <b>'+esc((me().revealWord||mySecret||'').toUpperCase())+'</b><br>Stick around and watch the endgame.';
+      ': <b>'+esc((me().revealWord||mySecret||'').toUpperCase())+'</b><br>Stick around and watch the endgame'+
+      (room.vis==='fog'?' — the fog lifts for you: every guess and clue is now visible.':'.');
     openOverlay('ov-out');
   }
 }
@@ -1151,7 +1152,7 @@ function renderHistory(){
   const arr=movesArr();
   const el=document.getElementById('history');
   if(!arr.length){
-    const lg = isFogged()
+    const lg = (isFogged() && !(players()[seat]&&me().out))
       ? 'Full fog: you see only your own clues. The ☠ meter tracks how close the hunters are to YOUR word.'
       : room.clues==='tiles'
       ? 'Teal = right spot · outlined = in the word — but whose word? Only the guesser knows.'
@@ -1161,7 +1162,8 @@ function renderHistory(){
     return;
   }
   el.innerHTML='';
-  const fogged=isFogged();
+  const spectating = players()[seat] && me().out;
+  const fogged = isFogged() && !spectating;
   arr.forEach((m,i)=>{
     const p=players()[m.who]||{};
     if(m.t==='panic'){
@@ -1251,25 +1253,37 @@ document.addEventListener('keydown',e=>{
 
 
 function isFogged(){ return room && room.vis==='fog' && room.status!=='done'; }
-// threat against MY word: only guesses made since my last panic swap
+// threat against MY word: what each hunter has ACCUMULATED since my last panic swap.
+// Knowledge is per-hunter (they don't share notes), so the level is the worst single hunter.
 function myThreat(){
   const arr=movesArr(); let since=-1;
   arr.forEach((m,i)=>{ if(m.t==='panic'&&m.who===seat) since=i; });
-  let count=0,best=0,bestEx=0;
+  const sec=mySecret||'';
+  const distinct=sec?new Set(sec.split('')).size:5;
+  const by={}; let count=0;
   arr.forEach((m,i)=>{
     if(i<=since||m.skip||m.who===seat)return;
     const tgt=m.tr||defog(m.t||'');
     if(tgt!==seat)return;
     count++;
-    const tot=(m.ex||0)+(m.mis||0);
-    if(tot>best)best=tot;
-    if((m.ex||0)>bestEx)bestEx=m.ex||0;
+    const hh=by[m.who]||(by[m.who]={pins:new Set(),letters:new Set(),bestEx:0,bestTot:0});
+    hh.bestEx=Math.max(hh.bestEx,m.ex||0);
+    hh.bestTot=Math.max(hh.bestTot,(m.ex||0)+(m.mis||0));
+    if(sec.length===5 && typeof m.word==='string' && m.word.length===5){
+      for(let k=0;k<5;k++) if(m.word[k]===sec[k]) hh.pins.add(k);          // positions they have pinned
+      for(let k=0;k<5;k++) if(m.word.indexOf(sec[k])>=0) hh.letters.add(sec[k]); // letters they've found
+    }
   });
   let lvl='quiet';
   if(count){
     lvl='probed';
-    if(bestEx>=2||best>=3)lvl='hot';
-    if(bestEx>=4||best===5)lvl='critical';
+    Object.values(by).forEach(hh=>{
+      const pins=hh.pins.size, found=hh.letters.size;
+      const hot  = pins>=2 || found>=3 || hh.bestEx>=2 || hh.bestTot>=3;
+      const crit = pins>=4 || hh.bestEx>=4 || (pins>=2 && distinct>0 && found>=distinct);
+      if(crit) lvl='critical';
+      else if(hot && lvl!=='critical') lvl='hot';
+    });
   }
   return {count,lvl};
 }
