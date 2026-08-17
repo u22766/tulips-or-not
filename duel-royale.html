@@ -70,6 +70,13 @@
   .move.hit .score{background:var(--accent);color:#fff}
   .move .tgt{font-size:.6rem;color:var(--muted);flex:none}
   .sysrow{text-align:center;font-size:.72rem;color:var(--warn);padding:2px 0;font-weight:700}
+  .move .word.fogged{color:#5b5570;letter-spacing:.3em}
+  #threat-pill{font-size:.6rem;border-radius:999px;padding:3px 10px;letter-spacing:.08em}
+  #threat-pill.tq{color:#46a171;border:1px solid #46a17155}
+  #threat-pill.tp{color:#d9a13f;border:1px solid #d9a13f66}
+  #threat-pill.th{color:#e2704d;border:1px solid #e2704d88}
+  #threat-pill.tc{background:var(--accent);color:#fff;animation:pulse 1.2s infinite}
+  @keyframes pulse{50%{filter:brightness(1.35)}}
   .hist-empty{color:var(--muted);text-align:center;font-size:.83rem;padding:26px 16px;line-height:1.6}
   .legend{font-size:.6rem;color:var(--muted);text-align:center;padding:2px 0}
   .wl{display:flex;gap:3px;flex:1}
@@ -293,6 +300,12 @@
     <button data-c="nums" onclick="setClues('nums')">Numbers · classic</button>
     <button data-c="tiles" onclick="setClues('tiles')">Colors · easier</button>
   </div>
+  <h3>Table visibility</h3>
+  <div class="seg" id="vis-seg">
+    <button data-v="open" onclick="setVis('open')">Open table</button>
+    <button data-v="fog" onclick="setVis('fog')">Full fog</button>
+  </div>
+  <div class="note" id="vis-note"></div>
   <h3>Turn timer</h3>
   <div class="seg" id="timer-seg">
     <button data-t="30" onclick="setTimerSecs(30)">30s</button>
@@ -364,6 +377,18 @@
   <button class="btn btn-ghost" onclick="leaveRoom()">Leave room</button>
 </div></div>
 
+<!-- Panic swap -->
+<div class="overlay" id="ov-panic"><div class="sheet">
+  <h2>🔄 Panic swap</h2>
+  <div class="sub">Burn this turn to change your secret word. Everyone will see that you swapped — nobody sees what you swapped to. <b>Once per game.</b></div>
+  <input class="field word" id="panic-input" maxlength="5" placeholder="•••••" autocomplete="off"
+         autocapitalize="off" autocorrect="off" spellcheck="false">
+  <div class="msg" id="panic-msg"></div>
+  <button class="btn btn-ghost" onclick="randomPanic()">Pick one for me</button>
+  <button class="btn btn-primary" id="panic-btn" onclick="confirmPanic()" disabled>Swap and end turn</button>
+  <button class="btn btn-ghost" onclick="closeOverlays()">Never mind</button>
+</div></div>
+
 <!-- Scratchpad -->
 <div class="overlay" id="ov-notes"><div class="sheet">
   <h2>✎ Scratchpad</h2>
@@ -385,6 +410,7 @@
     <div class="ex"><b>2:1</b> means two letters right-spot and one elsewhere — in <i>somebody's</i> word.</div>
     <p>Name someone's word exactly and they're <b>knocked out</b> (their word is revealed). Run out the clock and your turn is skipped — three skips in a row and the game assumes you've wandered off and knocks you out too.</p>
     <p>Last player standing wins.</p>
+    <p><b>Full fog rooms:</b> you see only your own guesses and clues — everyone else's shots appear as •••••. Your ☠ threat meter (quiet → probed → hot → critical) hints how close someone is to your word, and once per game you may burn a turn on a <b>panic swap</b> to change your word. The swap is announced; the new word is not.</p>
   </div>
   <button class="btn btn-ghost" onclick="openOverlay('ov-config')" style="margin-top:14px">⚙ Database setup &amp; rules</button>
   <button class="btn btn-ghost" onclick="closeOverlays()">Got it</button>
@@ -525,6 +551,7 @@ const SEATS=['s1','s2','s3','s4','s5'];
 const PCOLORS={s1:'var(--p1)',s2:'var(--p2)',s3:'var(--p3)',s4:'var(--p4)',s5:'var(--p5)'};
 let clues=localStorage.getItem('wr-clues')||'nums'; if(clues!=='tiles') clues='nums';
 let turnSecs=parseInt(localStorage.getItem('wr-secs')||'60'); if(![30,60,90].includes(turnSecs)) turnSecs=60;
+let vis=localStorage.getItem('wr-vis')||'open'; if(vis!=='fog') vis='open';
 let db=null, roomRef=null, roomCode=null, seat=null;
 let room=null, mySecret='', current='', myTarget=null;
 let svOffset=0, tickTimer=null;
@@ -536,9 +563,15 @@ const configured = !String(FIREBASE_CONFIG.apiKey).startsWith('PASTE');
 
 function setClues(c){clues=c;localStorage.setItem('wr-clues',c);renderSegs();}
 function setTimerSecs(t){turnSecs=t;localStorage.setItem('wr-secs',String(t));renderSegs();}
+function setVis(v){vis=v;localStorage.setItem('wr-vis',v);renderSegs();}
 function renderSegs(){
   document.querySelectorAll('#clue-seg button').forEach(b=>b.classList.toggle('on',b.dataset.c===clues));
   document.querySelectorAll('#timer-seg button').forEach(b=>b.classList.toggle('on',parseInt(b.dataset.t)===turnSecs));
+  document.querySelectorAll('#vis-seg button').forEach(b=>b.classList.toggle('on',b.dataset.v===vis));
+  const vn=document.getElementById('vis-note');
+  if(vn) vn.textContent = vis==='fog'
+    ? 'You see only your own guesses and clues. A threat meter warns how close the hunters are, and each player gets one panic swap to change their word mid-game.'
+    : 'Everyone sees every guess and its clues — targets stay hidden. Classic deduction.';
 }
 
 function serverNow(){ return Date.now()+svOffset; }
@@ -576,7 +609,7 @@ function createRoom(){
   const code=genCode();
   const ref=db.ref('royale/'+code);
   ref.set({
-    created:Date.now(), status:'lobby', clues, turnSecs,
+    created:Date.now(), status:'lobby', clues, turnSecs, vis,
     players:{ s1:{name, online:true, out:false, strikes:0, wins:0} }
   }).then(()=>enterRoom(code,'s1'))
     .catch(err=>showHomeError(err));
@@ -894,6 +927,13 @@ function renderTargets(){
     b.onclick=()=>{ myTarget=s; renderTargets(); renderKeyboardState(); };
     row.appendChild(b);
   });
+  if(room.vis==='fog' && !me().swapped){
+    const pb=document.createElement('button');
+    pb.className='tbtn'; pb.style.color='var(--warn)';
+    pb.textContent='🔄 Panic swap';
+    pb.onclick=openPanic;
+    row.appendChild(pb);
+  }
 }
 
 function submit(){
@@ -1045,7 +1085,14 @@ function renderTurn(){
   if(!room||room.status!=='play'){ el.innerHTML=''; return; }
   const cs=currentSeat(); if(!cs){ el.innerHTML=''; return; }
   const nm = cs===seat ? 'Your turn' : esc(players()[cs].name)+'\'s turn';
-  el.innerHTML='<span style="color:'+PCOLORS[cs]+'">'+nm+'</span><span id="timer-pill">–</span>';
+  let threat='';
+  if(room.vis==='fog' && players()[seat] && !me().out){
+    const t=myThreat();
+    const cls={quiet:'tq',probed:'tp',hot:'th',critical:'tc'}[t.lvl];
+    threat='<span id="threat-pill" class="'+cls+'" title="Shots taken at your word since your last swap">☠ '+
+      t.lvl.toUpperCase()+(t.count?' · '+t.count:'')+'</span>';
+  }
+  el.innerHTML='<span style="color:'+PCOLORS[cs]+'">'+nm+'</span><span id="timer-pill">–</span>'+threat;
   renderCountdown();
 }
 function renderHistoryEmpty(){
@@ -1057,7 +1104,9 @@ function renderHistory(){
   const arr=movesArr();
   const el=document.getElementById('history');
   if(!arr.length){
-    const lg = room.clues==='tiles'
+    const lg = isFogged()
+      ? 'Full fog: you see only your own clues. The ☠ meter tracks how close the hunters are to YOUR word.'
+      : room.clues==='tiles'
       ? 'Teal = right spot · outlined = in the word — but whose word? Only the guesser knows.'
       : 'Feedback reads right : wrong-spot — against a target only the guesser knows.';
     el.innerHTML='<div class="hist-empty">'+(room.status==='play'?'The hunt is on.':'Waiting to begin.')+'</div>'+
@@ -1065,8 +1114,15 @@ function renderHistory(){
     return;
   }
   el.innerHTML='';
+  const fogged=isFogged();
   arr.forEach((m,i)=>{
     const p=players()[m.who]||{};
+    if(m.t==='panic'){
+      const d=document.createElement('div'); d.className='sysrow';
+      d.style.color=PCOLORS[m.who];
+      d.textContent='🔄 '+(m.who===seat?'You':(p.name||'?'))+' swapped '+(m.who===seat?'your':'their')+' word';
+      el.appendChild(d); return;
+    }
     if(m.skip){
       const d=document.createElement('div'); d.className='sysrow';
       d.textContent='⏱ '+ (m.who===seat?'You':(p.name||'?')) +' ran out of time' + ((p.out&&m.who!==room.winner&&lastSkipEliminated(arr,i,m.who))?' — knocked out!':'');
@@ -1076,13 +1132,20 @@ function renderHistory(){
     const mine=(m.who===seat);
     d.className='move'+(m.hit?' hit':'')+(mine?' mine':'');
     if(mine) d.style.boxShadow='inset 3px 0 0 '+PCOLORS[seat];
-    let body, tail;
-    if(room.clues==='tiles' && m.pat){ body=wordTiles(esc(m.word),m.pat); tail=m.hit?'<span class="score">HIT</span>':''; }
-    else { body='<span class="word" style="color:'+PCOLORS[m.who]+'">'+esc(m.word)+'</span>';
-           tail='<span class="score">'+(m.hit?'HIT':m.ex+' : '+m.mis)+'</span>'; }
-    const tgt = m.hit ? '<span class="tgt">☠ '+esc((players()[m.tr]||{}).name||'')+'</span>'
-              : (mine && m.t ? '<span class="tgt">→ '+esc((players()[defog(m.t)]||{}).name||'?')+'</span>'
-                             : '<span class="tgt">→ ???</span>');
+    let body, tail, tgt;
+    if(fogged && !mine && !m.hit){
+      // full fog: someone took a shot — that is all you learn
+      body='<span class="word fogged">•••••</span>';
+      tail='';
+      tgt='<span class="tgt">→ ???</span>';
+    } else {
+      if(room.clues==='tiles' && m.pat){ body=wordTiles(esc(m.word),m.pat); tail=m.hit?'<span class="score">HIT</span>':''; }
+      else { body='<span class="word" style="color:'+PCOLORS[m.who]+'">'+esc(m.word)+'</span>';
+             tail='<span class="score">'+(m.hit?'HIT':m.ex+' : '+m.mis)+'</span>'; }
+      tgt = m.hit ? '<span class="tgt">☠ '+esc((players()[m.tr]||{}).name||'')+'</span>'
+          : (mine && m.t ? '<span class="tgt">→ '+esc((players()[defog(m.t)]||{}).name||'?')+'</span>'
+                         : '<span class="tgt">→ ???</span>');
+    }
     const label = mine ? 'You' : esc((p.name||'?').slice(0,7));
     d.innerHTML='<span class="num">'+(i+1)+'</span><span class="who" style="color:'+PCOLORS[m.who]+'">'+
       label+'</span>'+body+tgt+tail;
@@ -1092,9 +1155,9 @@ function renderHistory(){
   if(arr.length!==lastMoveCount) lastMoveCount=arr.length;
 }
 function lastSkipEliminated(arr,i,who){
-  // this skip eliminated them if it's their 3rd consecutive skip
+  // this skip eliminated them if it's their 3rd consecutive timeout (panic swaps break the chain)
   let c=0;
-  for(let k=i;k>=0;k--){ const m=arr[k]; if(m.who===who){ if(m.skip)c++; else break; } }
+  for(let k=i;k>=0;k--){ const m=arr[k]; if(m.who===who){ if(m.t==='panic')break; if(m.skip)c++; else break; } }
   return c>=3;
 }
 function renderEntry(){
@@ -1124,12 +1187,82 @@ document.addEventListener('keydown',e=>{
   if(e.ctrlKey||e.metaKey||e.altKey)return;
   const secretOpen=document.getElementById('ov-secret').classList.contains('open');
   if(secretOpen){ if(e.key==='Enter'&&document.activeElement===document.getElementById('secret-input')&&validateSecret())lockSecret(); return; }
+  const panicOpen=document.getElementById('ov-panic').classList.contains('open');
+  if(panicOpen){ if(e.key==='Enter'&&validatePanic())confirmPanic(); return; }
   if(document.querySelector('.overlay.open'))return;
   if(e.key==='Enter')handleKey('Enter');
   else if(e.key==='Backspace'){e.preventDefault();handleKey('⌫');}
   else if(/^[a-zA-Z]$/.test(e.key))handleKey(e.key.toLowerCase());
 });
 
+
+function isFogged(){ return room && room.vis==='fog' && room.status!=='done'; }
+// threat against MY word: only guesses made since my last panic swap
+function myThreat(){
+  const arr=movesArr(); let since=-1;
+  arr.forEach((m,i)=>{ if(m.t==='panic'&&m.who===seat) since=i; });
+  let count=0,best=0,bestEx=0;
+  arr.forEach((m,i)=>{
+    if(i<=since||m.skip||m.who===seat)return;
+    const tgt=m.tr||defog(m.t||'');
+    if(tgt!==seat)return;
+    count++;
+    const tot=(m.ex||0)+(m.mis||0);
+    if(tot>best)best=tot;
+    if((m.ex||0)>bestEx)bestEx=m.ex||0;
+  });
+  let lvl='quiet';
+  if(count){
+    lvl='probed';
+    if(bestEx>=2||best>=3)lvl='hot';
+    if(bestEx>=4||best===5)lvl='critical';
+  }
+  return {count,lvl};
+}
+function validatePanic(){
+  const v=document.getElementById('panic-input').value.trim().toLowerCase();
+  const msg=document.getElementById('panic-msg'),btn=document.getElementById('panic-btn');
+  let ok=false,text='';
+  if(!v)text='';
+  else if(!/^[a-z]+$/.test(v))text='Letters only';
+  else if(v.length<5)text=(5-v.length)+' more letter'+(5-v.length>1?'s':'');
+  else if(!VALID_SET.has(v))text='Not in the word list';
+  else if(v===mySecret)text='That is already your word';
+  else{ok=true;text='New identity ready.';}
+  msg.textContent=text;msg.classList.toggle('ok',ok);btn.disabled=!ok;return ok;
+}
+function randomPanic(){
+  document.getElementById('panic-input').value=ANSWERS[Math.floor(Math.random()*ANSWERS.length)].toUpperCase();
+  validatePanic();
+}
+function openPanic(){
+  document.getElementById('panic-input').value='';
+  validatePanic();
+  openOverlay('ov-panic');
+}
+function confirmPanic(){
+  if(!validatePanic())return;
+  const newWord=document.getElementById('panic-input').value.trim().toLowerCase();
+  roomRef.transaction(r=>{
+    if(!r||r.status!=='play')return;
+    const cs=r.order[r.turnIdx%r.order.length];
+    if(cs!==seat)return;
+    const p=r.players[seat];
+    if(!p||p.out||p.swapped)return;                 // one per player, ever
+    p.secret=fog(newWord); p.swapped=true; p.strikes=0;
+    if(!r.moves)r.moves=[];
+    const arr=Object.values(r.moves);
+    arr.push({who:seat,word:'-----',ex:0,mis:0,hit:false,skip:true,t:'panic'});
+    r.moves=arr;
+    r.turnIdx=nextAliveIdx(r,r.turnIdx);
+    r.turnStart=Date.now()+svOffset;
+    return r;
+  }).then(res=>{
+    if(res&&res.committed){ mySecret=newWord; closeOverlays(); toast('Word swapped — the hunters start over'); }
+    else toast('Swap not available');
+  });
+}
+document.getElementById('panic-input').addEventListener('input',validatePanic);
 
 // what I personally know about a target's word, from MY guesses at them
 function myKnowledge(target){
