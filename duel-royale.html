@@ -49,6 +49,9 @@
     border-radius:999px;padding:3px 9px;font-size:.68rem;font-weight:700}
   .rchip .dot{width:7px;height:7px;border-radius:50%}
   .rchip.out{opacity:.4;text-decoration:line-through}
+  .rchip.me{background:var(--surface-2);border-color:currentColor;padding-right:6px}
+  .rchip .youtag{font-size:.52rem;letter-spacing:.1em;text-transform:uppercase;opacity:.85;
+    border-left:1px solid currentColor;padding-left:6px;margin-left:1px}
   .rchip.offline .dot{background:#555 !important}
   #my-word-box{text-align:right;cursor:pointer}
   #my-secret-val{font-family:var(--serif);font-size:.92rem;letter-spacing:.2em;color:var(--p1);text-transform:uppercase}
@@ -62,6 +65,7 @@
   .move .word{font-weight:800;letter-spacing:.18em;text-transform:uppercase;font-size:1.02rem;flex:1}
   .move .score{font-family:var(--serif);font-size:.98rem;font-weight:600;
     background:var(--surface-2);border-radius:8px;padding:3px 10px;white-space:nowrap}
+  .move.mine{background:#221f2e}
   .move.hit{border-color:var(--accent)}
   .move.hit .score{background:var(--accent);color:#fff}
   .move .tgt{font-size:.6rem;color:var(--muted);flex:none}
@@ -975,8 +979,11 @@ function renderStrip(){
   seatsIn().forEach(s=>{
     const p=players()[s];
     const c=document.createElement('span');
-    c.className='rchip'+(p.out?' out':'')+(p.online===false?' offline':'');
-    c.innerHTML='<span class="dot" style="background:'+PCOLORS[s]+'"></span>'+esc(p.name.slice(0,8));
+    const isMe=(s===seat);
+    c.className='rchip'+(p.out?' out':'')+(p.online===false?' offline':'')+(isMe?' me':'');
+    if(isMe) c.style.color=PCOLORS[s];
+    c.innerHTML='<span class="dot" style="background:'+PCOLORS[s]+'"></span>'+esc(p.name.slice(0,8))+
+      (isMe?'<span class="youtag">you</span>':'');
     el.appendChild(c);
   });
   const box=document.getElementById('my-word-box');
@@ -1018,12 +1025,13 @@ function renderHistory(){
     const p=players()[m.who]||{};
     if(m.skip){
       const d=document.createElement('div'); d.className='sysrow';
-      d.textContent='⏱ '+ (p.name||'?') +' ran out of time' + ((p.out&&m.who!==room.winner&&lastSkipEliminated(arr,i,m.who))?' — knocked out!':'');
+      d.textContent='⏱ '+ (m.who===seat?'You':(p.name||'?')) +' ran out of time' + ((p.out&&m.who!==room.winner&&lastSkipEliminated(arr,i,m.who))?' — knocked out!':'');
       el.appendChild(d); return;
     }
     const d=document.createElement('div');
-    d.className='move'+(m.hit?' hit':'');
     const mine=(m.who===seat);
+    d.className='move'+(m.hit?' hit':'')+(mine?' mine':'');
+    if(mine) d.style.boxShadow='inset 3px 0 0 '+PCOLORS[seat];
     let body, tail;
     if(room.clues==='tiles' && m.pat){ body=wordTiles(esc(m.word),m.pat); tail=m.hit?'<span class="score">HIT</span>':''; }
     else { body='<span class="word" style="color:'+PCOLORS[m.who]+'">'+esc(m.word)+'</span>';
@@ -1031,8 +1039,9 @@ function renderHistory(){
     const tgt = m.hit ? '<span class="tgt">☠ '+esc((players()[m.tr]||{}).name||'')+'</span>'
               : (mine && m.t ? '<span class="tgt">→ '+esc((players()[defog(m.t)]||{}).name||'?')+'</span>'
                              : '<span class="tgt">→ ???</span>');
+    const label = mine ? 'You' : esc((p.name||'?').slice(0,7));
     d.innerHTML='<span class="num">'+(i+1)+'</span><span class="who" style="color:'+PCOLORS[m.who]+'">'+
-      esc((p.name||'?').slice(0,7))+'</span>'+body+tgt+tail;
+      label+'</span>'+body+tgt+tail;
     el.appendChild(d);
   });
   el.scrollTop=el.scrollHeight;
