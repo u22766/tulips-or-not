@@ -172,19 +172,39 @@
   /* dice ceremony */
   .dice-list{display:flex;flex-direction:column;gap:9px;margin:14px 0 6px}
   .dice-row{display:flex;align-items:center;gap:12px;background:var(--surface-2);border-radius:13px;padding:10px 14px}
-  .dice-row .die{font-size:1.9rem;width:40px;text-align:center;display:inline-block}
-  .dice-row .die.rolling{animation:tumble .18s linear infinite}
-  .dice-row .die.landed{animation:thunk .32s cubic-bezier(.2,1.6,.4,1)}
-  .dice-row.pending{opacity:.55}
-  .dice-row .ord{opacity:0;transition:opacity .3s}
-  .dice-row.settled .ord{opacity:1}
-  @keyframes tumble{
-    0%{transform:rotate(-16deg) translateY(0)}
-    25%{transform:rotate(12deg) translateY(-4px)}
-    50%{transform:rotate(-8deg) translateY(1px)}
-    75%{transform:rotate(18deg) translateY(-3px)}
-    100%{transform:rotate(-16deg) translateY(0)}}
-  @keyframes thunk{0%{transform:scale(1.45)}60%{transform:scale(.92)}100%{transform:scale(1)}}
+  /* 3D die */
+  #die-stage{height:185px;display:flex;align-items:flex-end;justify-content:center;
+    perspective:600px;margin:2px 0 4px;position:relative}
+  #die-shadow{position:absolute;bottom:2px;left:50%;transform:translateX(-50%);
+    width:110px;height:16px;border-radius:50%;background:rgba(0,0,0,.5);filter:blur(5px)}
+  #die-drop{width:92px;height:92px;position:relative;transform-style:preserve-3d;margin-bottom:8px}
+  #die-drop.drop{animation:dicedrop 1.9s cubic-bezier(.34,.72,.4,1) forwards}
+  @keyframes dicedrop{
+    0%{transform:translateY(-210px)}
+    18%{transform:translateY(0)}
+    36%{transform:translateY(-92px)}
+    52%{transform:translateY(0)}
+    66%{transform:translateY(-38px)}
+    78%{transform:translateY(0)}
+    88%{transform:translateY(-13px)}
+    100%{transform:translateY(0)}}
+  #die-cube{width:92px;height:92px;position:relative;transform-style:preserve-3d;
+    transition:transform .65s cubic-bezier(.2,1.35,.4,1)}
+  #die-cube.tumbling{transition:none;animation:tumble3d .5s linear infinite}
+  @keyframes tumble3d{from{transform:rotateX(0deg) rotateY(0deg) rotateZ(0deg)}
+    to{transform:rotateX(360deg) rotateY(720deg) rotateZ(180deg)}}
+  .dface{position:absolute;inset:0;background:linear-gradient(145deg,#faf7ee,#e6e0d1);
+    border-radius:18px;border:1px solid #cfc8b8;
+    display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(3,1fr);
+    padding:13px;backface-visibility:hidden}
+  .dface .pip{width:15px;height:15px;border-radius:50%;background:#1b1826;
+    align-self:center;justify-self:center;box-shadow:inset 0 2px 3px rgba(0,0,0,.55)}
+  #dice-rolled{text-align:center;font-family:var(--serif);font-size:1.02rem;min-height:1.4em;margin-bottom:6px}
+  /* compact tally */
+  .dice-list{margin:6px 0 10px}
+  .dice-row{padding:7px 13px}
+  .dice-row .die{font-size:1.25rem;width:28px;text-align:center}
+  .dice-row .nm{font-size:.85rem}
   .dice-row .nm{font-weight:800;font-size:.95rem;flex:1}
   .dice-row .ord{font-family:var(--serif);font-size:.8rem;color:var(--muted)}
 
@@ -316,9 +336,14 @@
 <!-- Dice ceremony -->
 <div class="overlay" id="ov-dice"><div class="sheet">
   <h2>🎲 Roll for turn order</h2>
-  <div class="sub">Highest roll goes first. Ties break automatically.</div>
-  <div class="dice-list" id="dice-list"></div>
-  <button class="btn btn-primary" onclick="closeOverlays()">Begin</button>
+  <div class="sub" id="dice-sub">Highest roll goes first…</div>
+  <div id="die-stage">
+    <div id="die-shadow"></div>
+    <div id="die-drop"><div id="die-cube"></div></div>
+  </div>
+  <div id="dice-rolled"></div>
+  <div class="dice-list" id="dice-list" style="display:none"></div>
+  <button class="btn btn-primary" id="dice-go" onclick="closeOverlays()" disabled>Begin</button>
 </div></div>
 
 <!-- Eliminated -->
@@ -789,43 +814,62 @@ function tryStartPlay(){
   });
 }
 
-function showDice(){
-  diceShown=true;
+const FACE_ROT={1:'rotateX(0deg) rotateY(0deg)',2:'rotateY(-90deg)',3:'rotateY(180deg)',
+                4:'rotateY(90deg)',5:'rotateX(-90deg)',6:'rotateX(90deg)'};
+const FACE_TF={1:'rotateY(0deg)',2:'rotateY(90deg)',3:'rotateY(180deg)',4:'rotateY(-90deg)',
+               5:'rotateX(90deg)',6:'rotateX(-90deg)'};
+const PIPS={1:[[2,2]],2:[[1,1],[3,3]],3:[[1,1],[2,2],[3,3]],4:[[1,1],[1,3],[3,1],[3,3]],
+            5:[[1,1],[1,3],[2,2],[3,1],[3,3]],6:[[1,1],[2,1],[3,1],[1,3],[2,3],[3,3]]};
+function buildDie(){
+  const cube=document.getElementById('die-cube'); cube.innerHTML='';
+  for(let n=1;n<=6;n++){
+    const f=document.createElement('div'); f.className='dface';
+    f.style.transform=FACE_TF[n]+' translateZ(46px)';
+    PIPS[n].forEach(([r,c])=>{ const p=document.createElement('div'); p.className='pip';
+      p.style.gridArea=r+' / '+c; f.appendChild(p); });
+    cube.appendChild(f);
+  }
+  return cube;
+}
+function buildTally(){
   const DIE=['\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
-  const order=room.order||[];
   const el=document.getElementById('dice-list'); el.innerHTML='';
-  const dice=[];
-  order.forEach((s,i)=>{
+  (room.order||[]).forEach((s,i)=>{
     const p=players()[s];
-    const row=document.createElement('div'); row.className='dice-row pending';
-    row.innerHTML='<span class="die rolling">'+DIE[0]+'</span>'+
+    const row=document.createElement('div'); row.className='dice-row';
+    row.innerHTML='<span class="die">'+DIE[(p.dice||1)-1]+'</span>'+
       '<span class="nm" style="color:'+PCOLORS[s]+'">'+esc(p.name)+(s===seat?' (you)':'')+'</span>'+
       '<span class="ord">'+(i+1)+(i===0?'st':i===1?'nd':i===2?'rd':'th')+'</span>';
     el.appendChild(row);
-    dice.push({row, die:row.querySelector('.die'), val:(p.dice||1)});
   });
+}
+function showDice(){
+  diceShown=true;
+  const myVal=(players()[seat]&&players()[seat].dice)||1;
+  const first=players()[(room.order||[])[0]]||{};
+  const firstTxt=((room.order||[])[0]===seat?'You go':esc(first.name)+' goes')+' first.';
+  const cube=buildDie();
+  const drop=document.getElementById('die-drop');
+  const rolled=document.getElementById('dice-rolled');
+  const tally=document.getElementById('dice-list');
+  const go=document.getElementById('dice-go');
+  rolled.textContent=''; tally.style.display='none'; go.disabled=true;
+  document.getElementById('dice-sub').textContent='Highest roll goes first…';
   openOverlay('ov-dice');
-
   const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if(reduced){
-    dice.forEach(d=>{ d.die.className='die'; d.die.textContent=DIE[d.val-1]; d.row.className='dice-row settled'; });
-    return;
-  }
-  // every die tumbles through random faces...
-  if(diceSpin) clearInterval(diceSpin);
-  diceSpin=setInterval(()=>{
-    dice.forEach(d=>{ if(d.done) return; d.die.textContent=DIE[Math.floor(Math.random()*6)]; });
-  },80);
-  // ...then they settle one by one, highest roll first
-  dice.forEach((d,i)=>{
-    setTimeout(()=>{
-      d.done=true;
-      d.die.className='die landed';
-      d.die.textContent=DIE[d.val-1];
-      d.row.className='dice-row settled';
-      if(i===dice.length-1 && diceSpin){ clearInterval(diceSpin); diceSpin=null; }
-    }, 700+i*420);
-  });
+  const settle=()=>{
+    rolled.innerHTML='You rolled a <b>'+myVal+'</b>. '+firstTxt;
+    buildTally(); tally.style.display='flex'; go.disabled=false;
+  };
+  if(reduced){ cube.style.transform=FACE_ROT[myVal]; settle(); return; }
+  drop.classList.remove('drop'); void drop.offsetWidth;      // restart bounce cleanly on rematch
+  drop.classList.add('drop');
+  cube.classList.add('tumbling');
+  setTimeout(()=>{
+    cube.classList.remove('tumbling');
+    cube.style.transform='rotateZ(-8deg) '+FACE_ROT[myVal];   // slight crooked landing
+    setTimeout(()=>{ cube.style.transform=FACE_ROT[myVal]; settle(); },500);
+  },1500);
 }
 
 // ═══════════ PLAY ═══════════
