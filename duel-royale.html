@@ -340,7 +340,8 @@
     <p>Name someone's word exactly and they're <b>knocked out</b> (their word is revealed). Run out the clock and your turn is skipped — three skips in a row and the game assumes you've wandered off and knocks you out too.</p>
     <p>Last player standing wins.</p>
   </div>
-  <button class="btn btn-ghost" onclick="closeOverlays()" style="margin-top:14px">Got it</button>
+  <button class="btn btn-ghost" onclick="openOverlay('ov-config')" style="margin-top:14px">⚙ Database setup &amp; rules</button>
+  <button class="btn btn-ghost" onclick="closeOverlays()">Got it</button>
 </div></div>
 
 <!-- Firebase not configured / rules update -->
@@ -421,6 +422,7 @@
   }
 }</pre>
     <button class="btn btn-ghost" onclick="copyRules()">Copy rules</button>
+    <button class="btn btn-ghost" onclick="closeOverlays()" style="margin-top:9px">Close</button>
   </div>
 </div></div>
 
@@ -550,7 +552,7 @@ function joinRoom(){
 function showHomeError(err){
   const m=String(err&&err.message||err);
   homeMsg(m.toLowerCase().includes('permission')
-    ? 'Database rules rejected this — paste the updated rules (tap ? then Setup)' 
+    ? 'Database rules rejected this — tap ? → Database setup, copy the rules, publish them in Firebase' 
     : 'Connection problem — check your signal');
 }
 function homeMsg(t){ document.getElementById('home-msg').textContent=t; }
