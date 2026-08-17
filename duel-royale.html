@@ -541,23 +541,51 @@ function createRoom(){
     .catch(err=>showHomeError(err));
 }
 
+function uniqueName(want,ps,mySeat){
+  const used=SEATS.filter(x=>ps[x]&&x!==mySeat).map(x=>String(ps[x].name||'').toLowerCase());
+  if(!used.includes(want.toLowerCase())) return want;
+  for(let n=2;n<10;n++){
+    const c=want.slice(0,10)+' '+n;
+    if(!used.includes(c.toLowerCase())) return c;
+  }
+  return want;
+}
 function joinRoom(){
   if(!db) return;
   const code=document.getElementById('join-code').value.trim().toUpperCase();
   if(!/^[A-Z0-9]{6}$/.test(code)){ homeMsg('Codes are 6 letters/numbers'); return; }
-  const name=myName(); localStorage.setItem('wr-name',name);
+  const want=myName(); localStorage.setItem('wr-name',want);
   const ref=db.ref('royale/'+code);
+  let chosen=null, denied='';
   ref.once('value').then(snap=>{
-    const r=snap.val();
-    if(!r){ homeMsg('No room with that code'); return; }
-    const ps=r.players||{};
-    // reclaim an offline seat first (rejoin/crash recovery)
-    let s=SEATS.find(x=>ps[x] && ps[x].online===false);
-    if(!s && r.status==='lobby') s=SEATS.find(x=>!ps[x]);
-    if(!s){ homeMsg(r.status==='lobby'?'Room is full (5 players)':'Game in progress — no open seat'); return; }
-    return ref.child('players/'+s).update({name, online:true, out:(ps[s]&&ps[s].out)||false,
-      strikes:(ps[s]&&ps[s].strikes)||0, wins:(ps[s]&&ps[s].wins)||0})
-      .then(()=>enterRoom(code,s));
+    if(!snap.val()){ homeMsg('No room with that code'); return; }
+    return ref.transaction(r=>{
+      if(r===null) return {};        // cold cache: forces a server round-trip; validate rejects if room truly gone
+      chosen=null;
+      const ps=r.players||{};
+      let s;
+      if(r.status==='lobby'){
+        // empty seats FIRST — a dimmed phone must never lose its seat to a newcomer
+        s=SEATS.find(x=>!ps[x]) || SEATS.find(x=>ps[x]&&ps[x].online===false);
+        denied='Room is full (5 players)';
+      } else {
+        // mid-game: only a truly departed seat can be reclaimed (crash recovery)
+        s=SEATS.find(x=>ps[x]&&ps[x].online===false);
+        denied='Game in progress — no open seat';
+      }
+      if(!s) return;                 // abort: nothing claimable
+      const prev=ps[s]||{};
+      if(!r.players) r.players={};
+      r.players[s]=Object.assign({}, prev, {
+        name:uniqueName(want,ps,s), online:true,
+        out:prev.out||false, strikes:prev.strikes||0, wins:prev.wins||0
+      });
+      chosen=s;
+      return r;
+    }).then(res=>{
+      if(chosen && res.committed) enterRoom(code,chosen);
+      else homeMsg(denied||'Could not join');
+    });
   }).catch(err=>showHomeError(err));
 }
 
