@@ -165,6 +165,13 @@
   .field:focus{border-color:var(--accent)}
   .field.code{letter-spacing:.4em;text-transform:uppercase;text-align:center;font-weight:800;font-family:var(--serif)}
   .field.word{letter-spacing:.28em;text-transform:uppercase;text-align:center;font-weight:800}
+  #invite-banner{display:none;background:linear-gradient(135deg,#2b2333,#241f30);
+    border:1px solid var(--accent);border-radius:14px;padding:13px 15px;margin-bottom:12px;text-align:center}
+  #invite-banner .ib-lbl{font-size:.56rem;letter-spacing:.15em;text-transform:uppercase;
+    color:var(--muted);font-weight:700;margin-bottom:3px}
+  #invite-banner .ib-code{font-family:var(--serif);font-size:1.45rem;letter-spacing:.3em;
+    color:var(--warn);padding-left:.3em}
+  #invite-banner .ib-note{font-size:.68rem;color:var(--muted);margin-top:5px;line-height:1.45}
   .msg{font-size:.74rem;min-height:1.1em;margin:-2px 0 10px;text-align:center;color:var(--warn)}
   .msg.ok{color:#2aa8a0}
   .seg{display:flex;gap:6px;background:var(--surface-2);padding:5px;border-radius:12px;margin-bottom:4px}
@@ -301,6 +308,11 @@
 <div class="overlay open" id="ov-home"><div class="sheet">
   <h2>Word Duel Royale</h2>
   <div class="sub">Three to five players, each on their own phone. Everyone hides a word. Nobody knows who's hunting whom. Last word standing wins.</div>
+  <div id="invite-banner">
+    <div class="ib-lbl">You've been invited to room</div>
+    <div class="ib-code" id="invite-code"></div>
+    <div class="ib-note">Check your name below, then tap Join.</div>
+  </div>
   <div style="display:flex;gap:8px;margin-bottom:10px">
     <input class="field" id="my-name" maxlength="12" placeholder="Your name" autocomplete="off" style="margin-bottom:0;flex:1">
     <button class="hdr-btn" style="height:auto;min-width:52px;justify-content:center;font-size:1.2rem" onclick="rollName()" title="New identity">🎲</button>
@@ -327,7 +339,7 @@
   <input class="field code" id="join-code" maxlength="6" placeholder="CODE" autocomplete="off"
          autocapitalize="characters" autocorrect="off" spellcheck="false">
   <div class="msg" id="home-msg"></div>
-  <button class="btn btn-ghost" onclick="joinRoom()">Join room</button>
+  <button class="btn btn-ghost" id="join-btn" onclick="joinRoom()">Join room</button>
 </div></div>
 
 <!-- Lobby -->
@@ -706,6 +718,7 @@ function homeMsg(t){ document.getElementById('home-msg').textContent=t; }
 function enterRoom(code,s){
   clearNotes();
   roomCode=code; seat=s;
+  clearInviteHash(); applyInvite();
   roomRef=db.ref('royale/'+code);
   document.getElementById('room-code-val').textContent=code;
   roomRef.child('players/'+s+'/online').onDisconnect().set(false);
@@ -730,11 +743,13 @@ function leaveRoom(){
   document.getElementById('target-row').style.display='none';
   renderHistoryEmpty(); renderEntry(); renderTurn();
   const n=localStorage.getItem('wr-name'); if(n) document.getElementById('my-name').value=n;
+  applyInvite();
   openOverlay('ov-home');
 }
 
 function shareCode(){
-  const text='Join my Word Duel Royale! Code: '+roomCode+'\n'+location.href;
+  const link=location.origin+location.pathname+'#'+roomCode;
+  const text='Join my Word Duel Royale! Code: '+roomCode+'\n'+link;
   if(navigator.share) navigator.share({text}).catch(()=>{});
   else if(navigator.clipboard) navigator.clipboard.writeText(text).then(()=>toast('Copied!'));
 }
@@ -1395,6 +1410,32 @@ function paintNotes(){
 function clearNotes(){ npMarks={}; npPos=['','','','','']; if(document.getElementById('np-grid')) buildNotes(); }
 function openNotes(){ buildNotes(); openOverlay('ov-notes'); }
 
+
+// ═══════════ INVITE LINKS (…/page.html#CODE) ═══════════
+function inviteCode(){
+  const m=String(location.hash||'').replace('#','').trim().toUpperCase();
+  return /^[A-Z0-9]{6}$/.test(m) ? m : null;
+}
+function applyInvite(){
+  const banner=document.getElementById('invite-banner');
+  const btn=document.getElementById('join-btn');
+  if(!banner||!btn) return;
+  const code=inviteCode();
+  if(code && !roomCode){
+    document.getElementById('join-code').value=code;
+    document.getElementById('invite-code').textContent=code;
+    banner.style.display='block';
+    btn.className='btn btn-primary';
+  } else {
+    banner.style.display='none';
+    btn.className='btn btn-ghost';
+  }
+}
+function clearInviteHash(){
+  if(location.hash && history.replaceState) history.replaceState(null,'',location.pathname+location.search);
+}
+window.addEventListener('hashchange',applyInvite);
+
 // ═══════════ MISC ═══════════
 function openOverlay(id){closeOverlays();document.getElementById(id).classList.add('open');}
 function closeOverlays(){
@@ -1429,6 +1470,7 @@ function confetti(){
 }
 
 document.getElementById('my-name').value = localStorage.getItem('wr-name') || randomAlien();
+applyInvite();
 init();
 </script>
 </body>
