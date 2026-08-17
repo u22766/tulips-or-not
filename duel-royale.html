@@ -168,10 +168,21 @@
   /* dice ceremony */
   .dice-list{display:flex;flex-direction:column;gap:9px;margin:14px 0 6px}
   .dice-row{display:flex;align-items:center;gap:12px;background:var(--surface-2);border-radius:13px;padding:10px 14px}
-  .dice-row .die{font-size:1.9rem;width:40px;text-align:center;animation:diceroll .8s ease}
+  .dice-row .die{font-size:1.9rem;width:40px;text-align:center;display:inline-block}
+  .dice-row .die.rolling{animation:tumble .18s linear infinite}
+  .dice-row .die.landed{animation:thunk .32s cubic-bezier(.2,1.6,.4,1)}
+  .dice-row.pending{opacity:.55}
+  .dice-row .ord{opacity:0;transition:opacity .3s}
+  .dice-row.settled .ord{opacity:1}
+  @keyframes tumble{
+    0%{transform:rotate(-16deg) translateY(0)}
+    25%{transform:rotate(12deg) translateY(-4px)}
+    50%{transform:rotate(-8deg) translateY(1px)}
+    75%{transform:rotate(18deg) translateY(-3px)}
+    100%{transform:rotate(-16deg) translateY(0)}}
+  @keyframes thunk{0%{transform:scale(1.45)}60%{transform:scale(.92)}100%{transform:scale(1)}}
   .dice-row .nm{font-weight:800;font-size:.95rem;flex:1}
   .dice-row .ord{font-family:var(--serif);font-size:.8rem;color:var(--muted)}
-  @keyframes diceroll{0%{transform:rotate(0) scale(.4);opacity:0}60%{transform:rotate(340deg) scale(1.15)}100%{transform:rotate(360deg) scale(1)}}
 
   .reveal{text-align:center;margin-bottom:14px;font-size:.8rem;color:var(--muted);line-height:1.7}
   .reveal b{font-family:var(--serif);font-size:1.12rem;letter-spacing:.18em;color:var(--text);font-weight:600}
@@ -301,7 +312,7 @@
 <!-- Dice ceremony -->
 <div class="overlay" id="ov-dice"><div class="sheet">
   <h2>🎲 Roll for turn order</h2>
-  <div class="sub">Highest roll goes first.</div>
+  <div class="sub">Highest roll goes first. Ties break automatically.</div>
   <div class="dice-list" id="dice-list"></div>
   <button class="btn btn-primary" onclick="closeOverlays()">Begin</button>
 </div></div>
@@ -488,6 +499,7 @@ let turnSecs=parseInt(localStorage.getItem('wr-secs')||'60'); if(![30,60,90].inc
 let db=null, roomRef=null, roomCode=null, seat=null;
 let room=null, mySecret='', current='', myTarget=null;
 let svOffset=0, tickTimer=null;
+let diceSpin=null;
 let diceShown=false, outShown=false, resultShown=false, prevStatus=null, lastMoveCount=0;
 const slots=[], keyEls={};
 
@@ -775,18 +787,41 @@ function tryStartPlay(){
 
 function showDice(){
   diceShown=true;
-  const DIE=['⚀','⚁','⚂','⚃','⚄','⚅'];
+  const DIE=['\u2680','\u2681','\u2682','\u2683','\u2684','\u2685'];
+  const order=room.order||[];
   const el=document.getElementById('dice-list'); el.innerHTML='';
-  (room.order||[]).forEach((s,i)=>{
+  const dice=[];
+  order.forEach((s,i)=>{
     const p=players()[s];
-    const row=document.createElement('div'); row.className='dice-row';
-    row.style.animationDelay=(i*.15)+'s';
-    row.innerHTML='<span class="die" style="animation-delay:'+(i*.15)+'s">'+DIE[(p.dice||1)-1]+'</span>'+
+    const row=document.createElement('div'); row.className='dice-row pending';
+    row.innerHTML='<span class="die rolling">'+DIE[0]+'</span>'+
       '<span class="nm" style="color:'+PCOLORS[s]+'">'+esc(p.name)+(s===seat?' (you)':'')+'</span>'+
       '<span class="ord">'+(i+1)+(i===0?'st':i===1?'nd':i===2?'rd':'th')+'</span>';
     el.appendChild(row);
+    dice.push({row, die:row.querySelector('.die'), val:(p.dice||1)});
   });
   openOverlay('ov-dice');
+
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if(reduced){
+    dice.forEach(d=>{ d.die.className='die'; d.die.textContent=DIE[d.val-1]; d.row.className='dice-row settled'; });
+    return;
+  }
+  // every die tumbles through random faces...
+  if(diceSpin) clearInterval(diceSpin);
+  diceSpin=setInterval(()=>{
+    dice.forEach(d=>{ if(d.done) return; d.die.textContent=DIE[Math.floor(Math.random()*6)]; });
+  },80);
+  // ...then they settle one by one, highest roll first
+  dice.forEach((d,i)=>{
+    setTimeout(()=>{
+      d.done=true;
+      d.die.className='die landed';
+      d.die.textContent=DIE[d.val-1];
+      d.row.className='dice-row settled';
+      if(i===dice.length-1 && diceSpin){ clearInterval(diceSpin); diceSpin=null; }
+    }, 700+i*420);
+  });
 }
 
 // ═══════════ PLAY ═══════════
@@ -1113,7 +1148,10 @@ function openNotes(){ buildNotes(); openOverlay('ov-notes'); }
 
 // ═══════════ MISC ═══════════
 function openOverlay(id){closeOverlays();document.getElementById(id).classList.add('open');}
-function closeOverlays(){document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'));}
+function closeOverlays(){
+  if(diceSpin){clearInterval(diceSpin);diceSpin=null;}
+  document.querySelectorAll('.overlay').forEach(o=>o.classList.remove('open'));
+}
 function openRules(){openOverlay('ov-rules');}
 function copyRules(){
   const t=document.getElementById('rules-json').textContent;
