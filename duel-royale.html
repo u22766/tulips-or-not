@@ -1132,6 +1132,13 @@ function renderHistory(){
     const mine=(m.who===seat);
     d.className='move'+(m.hit?' hit':'')+(mine?' mine':'');
     if(mine) d.style.boxShadow='inset 3px 0 0 '+PCOLORS[seat];
+    // my guesses at a player who panic-swapped later are dead intel — dim them
+    if(mine && !m.hit && m.t && m.t!=='panic'){
+      const tgtSeat=m.tr||defog(m.t);
+      for(let k=i+1;k<arr.length;k++){
+        if(arr[k].t==='panic' && arr[k].who===tgtSeat){ d.style.opacity=.4; break; }
+      }
+    }
     let body, tail, tgt;
     if(fogged && !mine && !m.hit){
       // full fog: someone took a shot — that is all you learn
@@ -1268,8 +1275,11 @@ document.getElementById('panic-input').addEventListener('input',validatePanic);
 function myKnowledge(target){
   const map={}; const rank={c:3,p:2,a:1};
   const up=(L,s)=>{ if(!map[L]||rank[s]>rank[map[L]]) map[L]=s; };
-  movesArr().forEach(m=>{
-    if(m.who!==seat||m.skip) return;
+  const arr=movesArr();
+  let since=-1;
+  arr.forEach((m,i)=>{ if(m.t==='panic'&&m.who===target) since=i; });   // their swap kills my intel
+  arr.forEach((m,i)=>{
+    if(i<=since||m.who!==seat||m.skip) return;
     const t=m.tr||defog(m.t||'');
     if(t!==target) return;
     if(m.pat){
